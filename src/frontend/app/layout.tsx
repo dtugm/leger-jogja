@@ -25,11 +25,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${jakarta.variable} antialiased`}>
+      <body className={`${jakarta.variable} min-h-screen antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LanguageProvider>
             <MapSettingsProvider>
-              <div className="flex h-screen overflow-hidden">{children}</div>
+              {children}
             </MapSettingsProvider>
           </LanguageProvider>
         </ThemeProvider>

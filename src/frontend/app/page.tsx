@@ -1,15 +1,8 @@
-import CesiumViewer from "@/components/cesium/CesiumViewerDynamic";
-import LeftSidebar from "@/components/layout/LeftSidebar";
-import RightSidebar from "@/components/layout/RightSidebar";
 
-export default function Home() {
+export default function RootPage() {
   return (
-    <>
-      <LeftSidebar />
-      <main className="relative flex-1 overflow-hidden">
-        <CesiumViewer />
-      </main>
-      <RightSidebar />
-    </>
+    <div className="flex h-screen overflow-hidden">
+      Root
+    </div>
   );
 }
