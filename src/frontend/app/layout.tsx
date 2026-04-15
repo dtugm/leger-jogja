@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
+import { ToastProvider } from "@/components/toast";
 import { LanguageProvider } from "@/lib/i18n";
 import { MapSettingsProvider } from "@/lib/map-settings";
 
@@ -29,7 +30,9 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LanguageProvider>
             <MapSettingsProvider>
-              {children}
+              <ToastProvider>
+                {children}
+              </ToastProvider>
             </MapSettingsProvider>
           </LanguageProvider>
         </ThemeProvider>
