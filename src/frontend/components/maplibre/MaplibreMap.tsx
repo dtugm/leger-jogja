@@ -82,7 +82,7 @@ export default function MaplibreMap({
             map.remove();
             mapRef.current = null;
         };
-    }, []); // ← intentionally empty: hanya run sekali saat mount
+    }, []);
 
     return (
         <div
