@@ -127,6 +127,23 @@ export class UsersService {
       .getOne();
   }
 
+  async findActiveUserByEmail(email: string): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.deleted_at IS NULL')
+      .andWhere('LOWER(user.email) = LOWER(:email)', {
+        email: email.trim(),
+      })
+      .getOne();
+  }
+
+  async updatePassword(userId: string, password: string): Promise<void> {
+    const user = await this.findActiveUserById(userId);
+    user.password = await this.passwordService.hash(password);
+    await this.usersRepository.save(user);
+  }
+
   async update(
     actor: UserResponseDto,
     id: string,

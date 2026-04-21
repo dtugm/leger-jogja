@@ -197,7 +197,6 @@ export class SourceFileService {
                 asset: { id: assetId }
             }
         })
-        console.log(res)
         return res
     }
 

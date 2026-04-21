@@ -7,6 +7,18 @@ export interface Configuration {
     jwtRefreshSecret: string;
     jwtRefreshExpiresIn: string;
   };
+  mail: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    pass: string;
+    from: string;
+  };
+  passwordReset: {
+    frontendUrl: string;
+    tokenExpiresInMinutes: number;
+  };
   database: {
     host: string;
     port: number;
@@ -44,6 +56,22 @@ function getEnvAsIntOrThrow(key: string): number {
   return parsed;
 }
 
+function getEnvAsBoolOrThrow(key: string): boolean {
+  const value = getEnvOrThrow(key).toLowerCase();
+
+  if (value === 'true') {
+    return true;
+  }
+
+  if (value === 'false') {
+    return false;
+  }
+
+  throw new Error(
+    `Environment variable ${key} must be either "true" or "false", got: ${value}`,
+  );
+}
+
 function validateConfiguration(): void {
   const requiredEnvVars = [
     'PORT',
@@ -52,6 +80,14 @@ function validateConfiguration(): void {
     'JWT_EXPIRES_IN',
     'JWT_REFRESH_SECRET',
     'JWT_REFRESH_EXPIRES_IN',
+    'MAIL_HOST',
+    'MAIL_PORT',
+    'MAIL_SECURE',
+    'MAIL_USER',
+    'MAIL_PASS',
+    'MAIL_FROM',
+    'FRONTEND_URL',
+    'PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES',
     'DB_HOST',
     'DB_PORT',
     'DB_USER',
@@ -81,10 +117,24 @@ export default (): Configuration => {
     port: getEnvAsIntOrThrow('PORT'),
     nodeEnv: getEnvOrThrow('NODE_ENV'),
     auth: {
-        jwtSecret: getEnvOrThrow('JWT_SECRET'),
-        jwtExpiresIn: getEnvOrThrow('JWT_EXPIRES_IN'),
-        jwtRefreshSecret: getEnvOrThrow('JWT_REFRESH_SECRET'),
-        jwtRefreshExpiresIn: getEnvOrThrow('JWT_REFRESH_EXPIRES_IN'),
+      jwtSecret: getEnvOrThrow('JWT_SECRET'),
+      jwtExpiresIn: getEnvOrThrow('JWT_EXPIRES_IN'),
+      jwtRefreshSecret: getEnvOrThrow('JWT_REFRESH_SECRET'),
+      jwtRefreshExpiresIn: getEnvOrThrow('JWT_REFRESH_EXPIRES_IN'),
+    },
+    mail: {
+      host: getEnvOrThrow('MAIL_HOST'),
+      port: getEnvAsIntOrThrow('MAIL_PORT'),
+      secure: getEnvAsBoolOrThrow('MAIL_SECURE'),
+      user: getEnvOrThrow('MAIL_USER'),
+      pass: getEnvOrThrow('MAIL_PASS'),
+      from: getEnvOrThrow('MAIL_FROM'),
+    },
+    passwordReset: {
+      frontendUrl: getEnvOrThrow('FRONTEND_URL'),
+      tokenExpiresInMinutes: getEnvAsIntOrThrow(
+        'PASSWORD_RESET_TOKEN_EXPIRES_IN_MINUTES',
+      ),
     },
     database: {
       host: getEnvOrThrow('DB_HOST'),
@@ -94,7 +144,7 @@ export default (): Configuration => {
       name: getEnvOrThrow('DB_NAME'),
       srid: getEnvOrThrow('DB_SRID'),
       srsName: getEnvOrThrow('DB_SRS_NAME'),
-      schema: getEnvOrThrow('DB_SCHEMA')
+      schema: getEnvOrThrow('DB_SCHEMA'),
     },
     redis: {
       host: getEnvOrThrow('REDIS_HOST'),

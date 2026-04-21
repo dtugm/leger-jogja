@@ -3,9 +3,12 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { StringValue } from 'ms';
-import { SecurityModule } from '../../common/security/security.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { SecurityModule } from 'src/common/security/security.module';
+import { MailModule } from 'src/mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -18,6 +21,8 @@ import { LocalStrategy } from './strategies/local.strategy';
     ConfigModule,
     UsersModule,
     SecurityModule,
+    MailModule,
+    TypeOrmModule.forFeature([PasswordResetToken]),
     PassportModule.register({ session: false }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
