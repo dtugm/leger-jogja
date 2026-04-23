@@ -17,6 +17,7 @@ import { randomUUID } from 'crypto';
 import { PagedResponseDto } from 'src/common/dto/paged-response.dto';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 import { UserRole } from '../users/entities/user.entity';
+import { CacheService } from 'src/cache/cache.service';
 
 type TreeNode<TNode> = {
   id: string;
@@ -48,21 +49,22 @@ type MenuConstraintError = {
 @Injectable()
 export class MenusService {
   constructor(
-    @InjectRepository(Menu)
-    private readonly menusRepository: Repository<Menu>,
+      @InjectRepository(Menu)
+      private readonly menusRepository: Repository<Menu>,
+      private readonly cacheService: CacheService,
   ) {}
 
   async create(createMenuDto: CreateMenuDto): Promise<MenuResponseDto> {
-    return this.executeMutation(async (manager) => {
+    const response = await this.executeMutation(async (manager) => {
       const parentId = createMenuDto.parentId ?? null;
       const href = createMenuDto.href.trim();
 
       await this.ensureParentExists(manager, parentId, 'Parent menu not found');
       await this.ensureUniqueHref(manager, href);
       await this.ensureAcceptedIndexForCreate(
-        manager,
-        parentId,
-        createMenuDto.index,
+          manager,
+          parentId,
+          createMenuDto.index,
       );
 
       const menu = manager.create(Menu, {
@@ -79,16 +81,38 @@ export class MenusService {
 
       return this.toResponse(savedMenu);
     });
+
+    await this.cacheService.delByPattern('menus:*');
+
+    return response;
   }
 
   async findAll(actor: UserResponseDto): Promise<MenuTreeResponseDto[]> {
+    const key = await this.cacheService.generateKey('menus', actor.role);
+    const cached = await this.cacheService.get<MenuTreeResponseDto[]>(key);
+    if (cached) return cached;
+
     const menus = await this.findVisibleMenus(actor.role);
-    return this.buildPublicTree(menus);
+    const response = this.buildPublicTree(menus);
+    await this.cacheService.set(key, response);
+
+    return response;
   }
 
   async findAllForSuperAdmin(
-    query: ListMenusQueryDto,
+      query: ListMenusQueryDto,
   ): Promise<PagedResponseDto<MenuAdminTreeResponseDto>> {
+    const key = await this.cacheService.generateKey(
+        'menus',
+        'list',
+        this.cacheService.generateQueryHash(query),
+    );
+    const cached =
+        await this.cacheService.get<PagedResponseDto<MenuAdminTreeResponseDto>>(
+            key,
+        );
+    if (cached) return cached;
+
     const menus = await this.menusRepository.find({
       order: {
         index: 'ASC',
@@ -102,7 +126,7 @@ export class MenusService {
     const limit = query.limit;
     const start = (page - 1) * limit;
 
-    return {
+    const response = {
       result: tree.slice(start, start + limit),
       pagination: {
         page,
@@ -111,6 +135,9 @@ export class MenusService {
         totalPages: Math.ceil(total / limit) || 1,
       },
     };
+    await this.cacheService.set(key, response);
+
+    return response;
   }
 
   async findOne(actor: UserResponseDto, id: string): Promise<MenuResponseDto> {
@@ -119,23 +146,23 @@ export class MenusService {
   }
 
   async update(
-    id: string,
-    updateMenuDto: UpdateMenuDto,
+      id: string,
+      updateMenuDto: UpdateMenuDto,
   ): Promise<MenuResponseDto> {
-    return this.executeMutation(async (manager) => {
+    const response = await this.executeMutation(async (manager) => {
       const existingMenu = await this.findMenuOrThrow(manager, id);
       const nextParentId = this.hasProperty(updateMenuDto, 'parentId')
-        ? (updateMenuDto.parentId ?? null)
-        : existingMenu.parentId;
+          ? (updateMenuDto.parentId ?? null)
+          : existingMenu.parentId;
 
       if (nextParentId === id) {
         throw new BadRequestException('Menu cannot be its own parent');
       }
 
       await this.ensureParentExists(
-        manager,
-        nextParentId,
-        'Parent menu not found',
+          manager,
+          nextParentId,
+          'Parent menu not found',
       );
 
       if (nextParentId) {
@@ -143,35 +170,35 @@ export class MenusService {
       }
 
       const nextHref = this.hasProperty(updateMenuDto, 'href')
-        ? updateMenuDto.href!.trim()
-        : existingMenu.href;
+          ? updateMenuDto.href!.trim()
+          : existingMenu.href;
       const nextIndex = this.hasProperty(updateMenuDto, 'index')
-        ? updateMenuDto.index!
-        : existingMenu.index;
+          ? updateMenuDto.index!
+          : existingMenu.index;
       if (nextHref !== existingMenu.href) {
         await this.ensureUniqueHref(manager, nextHref, id);
       }
       await this.ensureAcceptedIndexForUpdate(
-        manager,
-        id,
-        nextParentId,
-        nextIndex,
+          manager,
+          id,
+          nextParentId,
+          nextIndex,
       );
 
       const updatedMenu: Menu = {
         ...existingMenu,
         parentId: nextParentId,
         name: this.hasProperty(updateMenuDto, 'name')
-          ? updateMenuDto.name!.trim()
-          : existingMenu.name,
+            ? updateMenuDto.name!.trim()
+            : existingMenu.name,
         icon: this.hasProperty(updateMenuDto, 'icon')
-          ? (updateMenuDto.icon?.trim() ?? null)
-          : existingMenu.icon,
+            ? (updateMenuDto.icon?.trim() ?? null)
+            : existingMenu.icon,
         href: nextHref,
         index: nextIndex,
         roles: this.hasProperty(updateMenuDto, 'roles')
-          ? updateMenuDto.roles!
-          : existingMenu.roles,
+            ? updateMenuDto.roles!
+            : existingMenu.roles,
       };
 
       const sourceParentId = existingMenu.parentId;
@@ -183,46 +210,52 @@ export class MenusService {
       }
 
       const previousGroup = await this.findSiblingGroup(
-        manager,
-        sourceParentId,
-        new Set([id]),
+          manager,
+          sourceParentId,
+          new Set([id]),
       );
       const savedMenu = await manager.save(Menu, updatedMenu);
       await this.persistSiblingGroup(manager, previousGroup);
 
       return this.toResponse(savedMenu);
     });
+
+    await this.cacheService.delByPattern('menus:*');
+
+    return response;
   }
 
   async remove(id: string): Promise<void> {
     await this.executeMutation(async (manager) => {
       const targetMenu = await this.findMenuOrThrow(manager, id);
       const remainingSiblings = await this.findSiblingGroup(
-        manager,
-        targetMenu.parentId,
-        new Set([id]),
+          manager,
+          targetMenu.parentId,
+          new Set([id]),
       );
 
       await manager.remove(Menu, targetMenu);
       await this.persistSiblingGroup(manager, remainingSiblings);
     });
+
+    await this.cacheService.delByPattern('menus:*');
   }
 
   private async findVisibleMenus(role: UserRole): Promise<Menu[]> {
     const queryBuilder = this.menusRepository
-      .createQueryBuilder('menu')
-      .orderBy('menu.index', 'ASC')
-      .addOrderBy('menu.createdAt', 'ASC')
-      .select([
-        'menu.id',
-        'menu.parentId',
-        'menu.name',
-        'menu.icon',
-        'menu.href',
-        'menu.index',
-        'menu.roles',
-        'menu.createdAt',
-      ]);
+        .createQueryBuilder('menu')
+        .orderBy('menu.index', 'ASC')
+        .addOrderBy('menu.createdAt', 'ASC')
+        .select([
+          'menu.id',
+          'menu.parentId',
+          'menu.name',
+          'menu.icon',
+          'menu.href',
+          'menu.index',
+          'menu.roles',
+          'menu.createdAt',
+        ]);
 
     if (role !== UserRole.SUPER_ADMIN) {
       queryBuilder.where(':role = ANY(menu.roles)', { role });
@@ -231,12 +264,12 @@ export class MenusService {
   }
 
   private async findVisibleMenuOrThrow(
-    role: UserRole,
-    id: string,
+      role: UserRole,
+      id: string,
   ): Promise<Menu> {
     const queryBuilder = this.menusRepository
-      .createQueryBuilder('menu')
-      .where('menu.id = :id', { id });
+        .createQueryBuilder('menu')
+        .where('menu.id = :id', { id });
 
     if (role !== UserRole.SUPER_ADMIN) {
       queryBuilder.andWhere(':role = ANY(menu.roles)', { role });
@@ -252,9 +285,9 @@ export class MenusService {
   }
 
   private async findMenuOrThrow(
-    manager: EntityManager,
-    id: string,
-    message = 'Menu not found',
+      manager: EntityManager,
+      id: string,
+      message = 'Menu not found',
   ): Promise<Menu> {
     const menu = await manager.findOne(Menu, { where: { id } });
 
@@ -266,9 +299,9 @@ export class MenusService {
   }
 
   private findMenuFromCollectionOrThrow(
-    menus: Menu[],
-    id: string,
-    message = 'Menu not found',
+      menus: Menu[],
+      id: string,
+      message = 'Menu not found',
   ): Menu {
     const menu = menus.find((item) => item.id === id);
 
@@ -280,9 +313,9 @@ export class MenusService {
   }
 
   private async ensureParentExists(
-    manager: EntityManager,
-    parentId: string | null,
-    message: string,
+      manager: EntityManager,
+      parentId: string | null,
+      message: string,
   ): Promise<void> {
     if (!parentId) {
       return;
@@ -292,9 +325,9 @@ export class MenusService {
   }
 
   private async ensureUniqueHref(
-    manager: EntityManager,
-    href: string,
-    excludeId?: string,
+      manager: EntityManager,
+      href: string,
+      excludeId?: string,
   ): Promise<void> {
     const duplicatedMenu = await manager.findOne(Menu, {
       where: { href },
@@ -310,47 +343,47 @@ export class MenusService {
   }
 
   private async ensureNoCycle(
-    manager: EntityManager,
-    id: string,
-    parentId: string,
+      manager: EntityManager,
+      id: string,
+      parentId: string,
   ): Promise<void> {
     let currentParentId: string | null = parentId;
 
     while (currentParentId) {
       if (currentParentId === id) {
         throw new BadRequestException(
-          'Menu cannot be assigned to one of its descendants',
+            'Menu cannot be assigned to one of its descendants',
         );
       }
 
       const parentMenu = await this.findMenuOrThrow(
-        manager,
-        currentParentId,
-        'Parent menu not found',
+          manager,
+          currentParentId,
+          'Parent menu not found',
       );
       currentParentId = parentMenu.parentId;
     }
   }
 
   private async ensureAcceptedIndexForCreate(
-    manager: EntityManager,
-    parentId: string | null,
-    index: number,
+      manager: EntityManager,
+      parentId: string | null,
+      index: number,
   ): Promise<void> {
     const siblings = await this.findSiblingGroup(manager, parentId);
     this.ensureIndexIsAvailable(siblings, index);
   }
 
   private async ensureAcceptedIndexForUpdate(
-    manager: EntityManager,
-    id: string,
-    parentId: string | null,
-    index: number,
+      manager: EntityManager,
+      id: string,
+      parentId: string | null,
+      index: number,
   ): Promise<void> {
     const siblings = await this.findSiblingGroup(
-      manager,
-      parentId,
-      new Set([id]),
+        manager,
+        parentId,
+        new Set([id]),
     );
     this.ensureIndexIsAvailable(siblings, index);
   }
@@ -364,9 +397,9 @@ export class MenusService {
   }
 
   private async findSiblingGroup(
-    manager: EntityManager,
-    parentId: string | null,
-    excludedIds: Set<string> = new Set(),
+      manager: EntityManager,
+      parentId: string | null,
+      excludedIds: Set<string> = new Set(),
   ): Promise<Menu[]> {
     const menus = await manager.find(Menu, {
       where: {
@@ -385,15 +418,15 @@ export class MenusService {
     return menus.filter((menu) => !excludedIds.has(menu.id));
   }
   private hasProperty<T extends object>(
-    value: T,
-    key: keyof CreateMenuDto,
+      value: T,
+      key: keyof CreateMenuDto,
   ): boolean {
     return Boolean(Object.prototype.hasOwnProperty.call(value, key));
   }
 
   private async persistSiblingGroup(
-    manager: EntityManager,
-    menus: Menu[],
+      manager: EntityManager,
+      menus: Menu[],
   ): Promise<Menu[]> {
     if (menus.length === 0) {
       return [];
@@ -404,10 +437,10 @@ export class MenusService {
       index: -(index + 1),
     }));
     const persistedMenus = temporaryMenus.filter((menu) =>
-      this.isPersistedMenu(menu),
+        this.isPersistedMenu(menu),
     );
     const newMenus = temporaryMenus.filter(
-      (menu) => !this.isPersistedMenu(menu),
+        (menu) => !this.isPersistedMenu(menu),
     );
 
     if (persistedMenus.length > 0) {
@@ -419,11 +452,11 @@ export class MenusService {
     }
 
     return await manager.save(
-      Menu,
-      menus.map((menu, index) => ({
-        ...menu,
-        index: index + 1,
-      })),
+        Menu,
+        menus.map((menu, index) => ({
+          ...menu,
+          index: index + 1,
+        })),
     );
   }
 
@@ -454,8 +487,8 @@ export class MenusService {
   }
 
   private buildTree<TNode extends TreeNode<TNode>>(
-    menus: Menu[],
-    createNode: (menu: Menu) => TNode,
+      menus: Menu[],
+      createNode: (menu: Menu) => TNode,
   ): TNode[] {
     const nodes = new Map<string, TNode>();
 
@@ -481,17 +514,17 @@ export class MenusService {
 
   private sortNodes<TNode extends TreeNode<TNode>>(nodes: TNode[]): TNode[] {
     return nodes
-      .sort((left, right) => {
-        if (left.index !== right.index) {
-          return left.index - right.index;
-        }
+        .sort((left, right) => {
+          if (left.index !== right.index) {
+            return left.index - right.index;
+          }
 
-        return left.createdAt.getTime() - right.createdAt.getTime();
-      })
-      .map((node) => ({
-        ...node,
-        children: this.sortNodes(node.children),
-      }));
+          return left.createdAt.getTime() - right.createdAt.getTime();
+        })
+        .map((node) => ({
+          ...node,
+          children: this.sortNodes(node.children),
+        }));
   }
 
   private stripTreeMetadata(nodes: MenuTreeNode[]): MenuTreeResponseDto[] {
@@ -519,7 +552,7 @@ export class MenusService {
   }
 
   private async executeMutation<T>(
-    callback: (manager: EntityManager) => Promise<T>,
+      callback: (manager: EntityManager) => Promise<T>,
   ): Promise<T> {
     return this.menusRepository.manager.transaction(async (manager) => {
       try {
@@ -540,20 +573,20 @@ export class MenusService {
         }
 
         if (
-          driverError.constraint === 'UQ_menus_root_index' ||
-          driverError.constraint === 'UQ_menus_parent_index'
+            driverError.constraint === 'UQ_menus_root_index' ||
+            driverError.constraint === 'UQ_menus_parent_index'
         ) {
           throw new ConflictException('Menu index is already in use');
         }
 
         throw new ConflictException(
-          'Menu data violates a uniqueness constraint',
+            'Menu data violates a uniqueness constraint',
         );
       }
 
       if (
-        driverError.code === '23503' &&
-        driverError.constraint === 'FK_menus_parent_id'
+          driverError.code === '23503' &&
+          driverError.constraint === 'FK_menus_parent_id'
       ) {
         throw new NotFoundException('Parent menu not found');
       }
