@@ -78,8 +78,9 @@ export class SourceFileService {
 
             // commit transaction
             await queryRunner.commitTransaction();
-
-            response = {
+            
+            await this.invalidateAssetCaches(createDto.assetId);
+            return {
                 message: "Successfully imported the file",
                 data: sourceFile
             };
@@ -112,10 +113,6 @@ export class SourceFileService {
             const cleanupFiles = [outputPath, createDto.file?.path];
             await this.cleanUpFiles(cleanupFiles);
         }
-
-        await this.invalidateAssetCaches(createDto.assetId);
-
-        return response!;
     }
 
     async update(
@@ -175,9 +172,11 @@ export class SourceFileService {
                     WHERE "id" = $2
                 `, [point.location, assetId])
             }
-
             // commit transaction
             await queryRunner.commitTransaction();
+
+            await this.invalidateAssetCaches(assetId);
+            return updatedSrcFile!;
 
         } catch (err) {
             console.error(err)
@@ -195,10 +194,6 @@ export class SourceFileService {
             const cleanupFiles = [outputPath, file.path];
             await this.cleanUpFiles(cleanupFiles);
         }
-
-        await this.invalidateAssetCaches(assetId);
-
-        return updatedSrcFile!;
     }
 
     async findByAssetId(assetId: string) {
@@ -214,7 +209,6 @@ export class SourceFileService {
                 asset: { id: assetId }
             }
         })
-        console.log(res)
         await this.cacheService.set(key, res);
 
         return res
@@ -226,6 +220,9 @@ export class SourceFileService {
 
             await this.cityDbToolService.remove({ assetId });
             await this.sourceFileRepository.delete({ asset: { id: asset.id } });
+            await this.invalidateAssetCaches(assetId);
+
+            return { message: 'Successfully removed features' }
         } catch (err) {
             if (err instanceof NotFoundException) {
                 throw err;
@@ -234,10 +231,6 @@ export class SourceFileService {
             console.error(err)
             throw new InternalServerErrorException('Failed to remove source file data')
         }
-
-        await this.invalidateAssetCaches(assetId);
-
-        return { message: 'Successfully removed features' }
     }
 
     async remove(assetId: string, fileId: string) {
@@ -254,6 +247,9 @@ export class SourceFileService {
 
             await this.cityDbToolService.remove({ assetId, sourceFileId: fileId });
             await this.sourceFileRepository.remove(sourceFile);
+            await this.invalidateAssetCaches(assetId);
+
+            return { message: 'Successfully removed features' }
         } catch (err) {
             if (err instanceof NotFoundException) {
                 throw err;
@@ -261,10 +257,6 @@ export class SourceFileService {
 
             throw new InternalServerErrorException('Failed to remove source file data')
         }
-
-        await this.invalidateAssetCaches(assetId);
-
-        return { message: 'Successfully removed features' }
     }
 
     async cleanUpFiles(filepaths: (string | null | undefined)[]) {

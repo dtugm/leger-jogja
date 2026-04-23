@@ -165,7 +165,6 @@ export class UsersService {
     const user = await this.findActiveUserById(userId);
     user.password = await this.passwordService.hash(password);
     await this.usersRepository.save(user);
-    await this.cacheService.delByPattern('users:list:*');
   }
 
   async update(
