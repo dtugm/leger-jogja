@@ -12,6 +12,7 @@ import { ImportFileOptions } from 'src/domains/citydb-tool/interfaces/citydb-too
 import { ImportMode } from 'src/domains/citydb-tool/enums/import-mode.enum';
 import { UpdateSourceFileDto } from '../dto/update-source-file.dto';
 import { CitydbQueryService } from 'src/domains/citydb-tool/services/citydb-query.service';
+import { CacheService } from 'src/cache/cache.service';
 
 @Injectable()
 export class SourceFileService {
@@ -22,6 +23,7 @@ export class SourceFileService {
         private readonly cityDbQueryService: CitydbQueryService,
         private readonly gmlService: GmlService,
         private readonly assetService: AssetService,
+        private readonly cacheService: CacheService,
         private dataSource: DataSource,
     ) { }
 
@@ -32,6 +34,7 @@ export class SourceFileService {
 
         let outputPath: string | null = null;
         let sourceFile: SourceFile | null = null;
+        let response: { message: string, data: SourceFile } | undefined;
 
         try {
             // save source file data to the database
@@ -70,11 +73,13 @@ export class SourceFileService {
                     UPDATE "public"."assets"
                     SET location = ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)
                     WHERE "id" = $2
-                    `, [point.location, createDto.assetId])
+                `, [point.location, createDto.assetId])
             }
 
             // commit transaction
             await queryRunner.commitTransaction();
+            
+            await this.invalidateAssetCaches(createDto.assetId);
             return {
                 message: "Successfully imported the file",
                 data: sourceFile
@@ -121,6 +126,7 @@ export class SourceFileService {
 
         let outputPath: string | null = null;
         const file = updateDto?.file!;
+        let updatedSrcFile: SourceFile | undefined;
 
         try {
             const srcFile = await queryRunner.manager.findOne(
@@ -137,7 +143,7 @@ export class SourceFileService {
             // update source file data
             srcFile.filename = file.originalname;
             srcFile.uploadedBy = updateDto?.uploadedBy;
-            const updatedSrcFile = await queryRunner.manager.save(SourceFile, srcFile);
+            updatedSrcFile = await queryRunner.manager.save(SourceFile, srcFile);
 
             // Add 'asset id' and 'source file id' to gml data
             const addAttributeParams: AddAttributeToGML = {
@@ -164,12 +170,14 @@ export class SourceFileService {
                     UPDATE "public"."assets"
                     SET location = ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)
                     WHERE "id" = $2
-                    `, [point.location, assetId])
+                `, [point.location, assetId])
             }
-
             // commit transaction
             await queryRunner.commitTransaction();
-            return updatedSrcFile;
+
+            await this.invalidateAssetCaches(assetId);
+            return updatedSrcFile!;
+
         } catch (err) {
             console.error(err)
             await queryRunner.rollbackTransaction();
@@ -189,6 +197,10 @@ export class SourceFileService {
     }
 
     async findByAssetId(assetId: string) {
+        const key = await this.cacheService.generateKey('assets', assetId);
+        const cached = await this.cacheService.get<SourceFile[]>(key);
+        if (cached) return cached;
+
         // make sure that the asset exist
         await this.assetService.findOne(assetId);
 
@@ -197,6 +209,8 @@ export class SourceFileService {
                 asset: { id: assetId }
             }
         })
+        await this.cacheService.set(key, res);
+
         return res
     }
 
@@ -206,6 +220,8 @@ export class SourceFileService {
 
             await this.cityDbToolService.remove({ assetId });
             await this.sourceFileRepository.delete({ asset: { id: asset.id } });
+            await this.invalidateAssetCaches(assetId);
+
             return { message: 'Successfully removed features' }
         } catch (err) {
             if (err instanceof NotFoundException) {
@@ -215,7 +231,6 @@ export class SourceFileService {
             console.error(err)
             throw new InternalServerErrorException('Failed to remove source file data')
         }
-
     }
 
     async remove(assetId: string, fileId: string) {
@@ -232,6 +247,8 @@ export class SourceFileService {
 
             await this.cityDbToolService.remove({ assetId, sourceFileId: fileId });
             await this.sourceFileRepository.remove(sourceFile);
+            await this.invalidateAssetCaches(assetId);
+
             return { message: 'Successfully removed features' }
         } catch (err) {
             if (err instanceof NotFoundException) {
@@ -256,5 +273,11 @@ export class SourceFileService {
                 }
             }
         }
+    }
+
+    private async invalidateAssetCaches(assetId: string) {
+        const key = await this.cacheService.generateKey('assets', assetId);
+        await this.cacheService.del(key);
+        await this.cacheService.delByPattern('assets:list:*');
     }
 }
