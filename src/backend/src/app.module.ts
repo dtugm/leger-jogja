@@ -13,6 +13,7 @@ import { HealthModule } from './domains/health/health.module';
 import { AssetModule } from './domains/asset/asset.module';
 import { CacheModule } from './cache/cache.module';
 import { ToolModule } from './tool/tool.module';
+import { Tiles3dModule } from './domains/tiles3d/tiles3d.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ToolModule } from './tool/tool.module';
     MenusModule,
     AssetModule,
     ToolModule,
+    Tiles3dModule,
   ],
   controllers: [AppController],
   providers: [AppService],
