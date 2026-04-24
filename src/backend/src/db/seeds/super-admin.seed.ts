@@ -11,7 +11,7 @@ const runSeeder = async () => {
   const dataSource = new DataSource(dataSourceOptions);
 
   try {
-    console.log('⏳ Connecting to PostgreSQL...');
+    console.log('Connecting to PostgreSQL...');
     await dataSource.initialize();
 
     const userRepository = dataSource.getRepository(User);

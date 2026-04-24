@@ -33,7 +33,6 @@ export class Tiles3dService {
             if (file?.path) {
                 fileUrl = await this.upload3DtilesFile(file.path);
                 upsertDto.url = fileUrl;
-                console.log(fileUrl)
             }
 
             const upsertData = {

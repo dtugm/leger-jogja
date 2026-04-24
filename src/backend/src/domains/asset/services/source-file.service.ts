@@ -68,7 +68,6 @@ export class SourceFileService {
             // calculate center point of the asset
             const point = await this.cityDbQueryService.getAssetCenterPoint(createDto.assetId);
             if (point?.location) {
-                console.log(point)
                 await queryRunner.manager.query(`
                     UPDATE "public"."assets"
                     SET location = ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)
@@ -179,7 +178,6 @@ export class SourceFileService {
             return updatedSrcFile!;
 
         } catch (err) {
-            console.error(err)
             await queryRunner.rollbackTransaction();
 
             if (err instanceof NotFoundException) {
@@ -228,7 +226,6 @@ export class SourceFileService {
                 throw err;
             }
 
-            console.error(err)
             throw new InternalServerErrorException('Failed to remove source file data')
         }
     }

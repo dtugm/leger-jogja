@@ -64,7 +64,6 @@ export class Tiles3dController {
     @UploadedFile() file: Express.Multer.File,
     @Body() createDto: UpsertTiles3dDto
   ) {
-    console.log(createDto)
     if (!file) {
       throw new BadRequestException('File is required');
     }
