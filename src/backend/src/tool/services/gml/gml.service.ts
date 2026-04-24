@@ -1,64 +1,69 @@
 import { Injectable } from '@nestjs/common';
 import { AddAttributeToGML, normalizeCityGML } from 'src/tool/interfaces/gml-tool.interface';
-import * as xml2js from 'xml2js';
 import * as fs from 'fs';
+
+import * as readline from 'readline';
 
 @Injectable()
 export class GmlService {
+
   async addAttributeToGml(args: AddAttributeToGML): Promise<string> {
-    const parser = new xml2js.Parser({ explicitArray: true });
-    const builder = new xml2js.Builder({
-      renderOpts: { 'pretty': true, 'indent': '  ', 'newline': '\n' },
-      xmldec: { 'version': '1.0', 'encoding': 'UTF-8' }
+    const outputPath = args.filepath.replace('.gml', '_updated.gml');
+
+    // Create streams
+    const readStream = fs.createReadStream(args.filepath, { encoding: 'utf8' });
+    const writeStream = fs.createWriteStream(outputPath, { encoding: 'utf8' });
+
+    const rl = readline.createInterface({
+      input: readStream,
+      crlfDelay: Infinity, // Recognizes all instances of CR LF ('\r\n') as a single line break.
     });
 
-    // Parse XML as Object
-    const fileContent = fs.readFileSync(args.filepath, 'utf8');
-    const result = await parser.parseStringPromise(fileContent);
-
-    const cityModel = result['core:CityModel'];
-    if (cityModel && cityModel['core:cityObjectMember']) {
-
-      cityModel['core:cityObjectMember'].forEach((member: any) => {
-        // CityGML biasanya membungkus building di dalam bldg:Building
-        const building = member['bldg:Building'] ? member['bldg:Building'][0] : null;
-
-        if (building) {
-          // Add new attributes
-          if (args.validFrom) {
-            const validFromDate = new Date(args.validFrom).toISOString();
-            building['core:validFrom'] = [validFromDate]
-          }
-          if (args.validTo) {
-            const validToDate = new Date(args.validTo).toISOString();
-            building['core:validTo'] = [validToDate]
-          }
-
-          // Inisiate an array if the generic properties does not exist yet
-          if (!building['gen:stringAttribute']) {
-            building['gen:stringAttribute'] = [];
-          }
-
-          building['gen:stringAttribute'].push({
-            $: { name: 'asset_id' },
-            'gen:value': [args.assetId]
-          });
-          building['gen:stringAttribute'].push({
-            $: { name: 'source_file_id' },
-            'gen:value': [args.sourceFileId]
-          });
-        }
-      });
+    // Build the XML strings we want to inject
+    let injectedXml = '';
+    if (args.validFrom) {
+      injectedXml += `\n      <core:validFrom>${new Date(args.validFrom).toISOString()}</core:validFrom>`;
+    }
+    if (args.validTo) {
+      injectedXml += `\n      <core:validTo>${new Date(args.validTo).toISOString()}</core:validTo>`;
     }
 
-    // Rebuild as an XML String
-    const updatedGml = builder.buildObject(result);
+    injectedXml += `
+      <gen:stringAttribute name="asset_id">
+        <gen:value>${args.assetId}</gen:value>
+      </gen:stringAttribute>
+      <gen:stringAttribute name="source_file_id">
+        <gen:value>${args.sourceFileId}</gen:value>
+      </gen:stringAttribute>`;
 
-    // save the result as a file 
-    const outputPath = args.filepath.replace('.gml', 'updated.gml')
-    fs.writeFileSync(outputPath, updatedGml, 'utf8');
+    return new Promise((resolve, reject) => {
+      rl.on('line', (line) => {
+        const closingTagRegex = /(<\/(?:bldg:Building|gen:GenericCityObject|Building|GenericCityObject)>)/;
 
-    return outputPath;
+        if (closingTagRegex.test(line)) {
+          const modifiedLine = line.replace(closingTagRegex, `${injectedXml}    $1`);
+          writeStream.write(modifiedLine + '\n');
+        } else {
+          writeStream.write(line + '\n');
+        }
+      });
+
+      rl.on('close', () => {
+        writeStream.end();
+      });
+
+      writeStream.on('finish', () => {
+        resolve(outputPath);
+      });
+
+      writeStream.on('error', (err) => {
+        reject(err);
+      });
+
+      readStream.on('error', (err) => {
+        reject(err);
+      });
+    });
   }
 
   normalizeCityGml(args: normalizeCityGML) {
@@ -106,7 +111,7 @@ export class GmlService {
 
       if (!rootMatch) throw new Error("Root element CityModel tidak ditemukan.");
 
-      const fullRootTag = rootMatch[0]; 
+      const fullRootTag = rootMatch[0];
       const rootAttributes = rootMatch[1];
 
       // populate new element for global extent
