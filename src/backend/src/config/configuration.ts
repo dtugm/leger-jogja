@@ -35,6 +35,13 @@ export interface Configuration {
     password?: string;
     ttl: number;
   };
+  storage: {
+    accessKeyId: string;
+    secretAccessKey: string;
+    bucketName: string;
+    endpoint: string;
+    publicDomain: string;
+  }
 }
 
 function getEnvOrThrow(key: string): string {
@@ -152,5 +159,12 @@ export default (): Configuration => {
       password: process.env.REDIS_PASSWORD || '',
       ttl: getEnvAsIntOrThrow('REDIS_TTL'),
     },
+    storage: {
+      accessKeyId: getEnvOrThrow('ACCESS_KEY_ID'),
+      secretAccessKey: getEnvOrThrow('SECRET_ACCESS_KEY'),
+      bucketName: getEnvOrThrow('BUCKET_NAME'),
+      endpoint: getEnvOrThrow('ENDPOINT'),
+      publicDomain: getEnvOrThrow('PUBLIC_DOMAIN')
+    }
   };
 };
