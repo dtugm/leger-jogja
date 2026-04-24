@@ -4,7 +4,7 @@ import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import KeyvRedis from '@keyv/redis';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from './cache.constant';
+import { REDIS_CLIENT } from 'src/common/services.constant';
 
 @Global()
 @Module({
@@ -18,10 +18,9 @@ import { REDIS_CLIENT } from './cache.constant';
         const port = configService.get<number>('REDIS_PORT')
         const password = configService.get<string>('REDIS_PASSWORD')
 
-        const redisUrl = password 
-          ? `redis://:${password}@${host}:${port}`  
+        const redisUrl = password
+          ? `redis://:${password}@${host}:${port}`
           : `redis://${host}:${port}`;
-          
         return {
           stores: [
             new KeyvRedis(redisUrl),

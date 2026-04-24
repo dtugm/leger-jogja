@@ -2,13 +2,13 @@ import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject, Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
 import Redis from 'ioredis';
-import { REDIS_CLIENT } from './cache.constant';
+import { REDIS_CLIENT } from 'src/common/services.constant';
 @Injectable()
 export class CacheService {
     constructor(
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         @Inject(REDIS_CLIENT) private redis: Redis,
-    ) {}
+    ) { }
 
     // Ubah default TTL ke 600.000 ms (10 menit)
     async set(key: string, value: any, ttl: number = 600000) {
