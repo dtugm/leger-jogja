@@ -44,7 +44,7 @@ export class AssetController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: 200 * 1024 * 1024, // 200 mb
+        fileSize: 1024 * 1024 * 1024, // 1 GB
       },
       storage: diskStorage({
         destination: (_req, _file, callback) => {
@@ -121,7 +121,7 @@ export class AssetController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: 200 * 1024 * 1024, // 200 mb
+        fileSize: 1024 * 1024 * 1024, // 1 GB
       },
       storage: diskStorage({
         destination: (_req, _file, callback) => {
