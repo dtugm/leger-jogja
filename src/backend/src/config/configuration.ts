@@ -1,6 +1,8 @@
 export interface Configuration {
   port: number;
   nodeEnv: string;
+  logLevel: string;
+  appName: string;
   auth: {
     jwtSecret: string;
     jwtExpiresIn: string;
@@ -83,6 +85,8 @@ function validateConfiguration(): void {
   const requiredEnvVars = [
     'PORT',
     'NODE_ENV',
+    'LOG_LEVEL',
+    'APP_NAME',
     'JWT_SECRET',
     'JWT_EXPIRES_IN',
     'JWT_REFRESH_SECRET',
@@ -123,6 +127,8 @@ export default (): Configuration => {
   return {
     port: getEnvAsIntOrThrow('PORT'),
     nodeEnv: getEnvOrThrow('NODE_ENV'),
+    logLevel: getEnvOrThrow('LOG_LEVEL'),
+    appName: getEnvOrThrow('APP_NAME'),
     auth: {
       jwtSecret: getEnvOrThrow('JWT_SECRET'),
       jwtExpiresIn: getEnvOrThrow('JWT_EXPIRES_IN'),

@@ -5,9 +5,35 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { createLogger } from 'winston';
+import * as winston from 'winston';
+import { utilities as nestWinstonModuleUtilities, WinstonModule } from 'nest-winston';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const appName = process.env.APP_NAME || 'Nest'
+  const level = process.env.LOG_LEVEL || 'error'
+  const loggerInstance = createLogger({
+    level,
+    transports: [
+      new winston.transports.Console({
+        format: winston.format.combine(
+          winston.format.errors(),
+          winston.format.timestamp(),
+          winston.format.ms(),
+          nestWinstonModuleUtilities.format.nestLike(appName, {
+            colors: true,
+            prettyPrint: true,
+            processId: true,
+            appName: true
+          })
+        )
+      })
+    ]
+  })
+
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger({ instance: loggerInstance })
+  });
 
   app.use(helmet());
 

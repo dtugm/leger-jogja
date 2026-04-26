@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SourceFile } from '../entities/source-file.entity';
 import { AddSourceFileDto } from '../dto/add-source-file.dto';
@@ -16,6 +16,7 @@ import { CacheService } from 'src/cache/cache.service';
 
 @Injectable()
 export class SourceFileService {
+    private readonly logger = new Logger(SourceFileService.name);
     constructor(
         @InjectRepository(SourceFile)
         private readonly sourceFileRepository: Repository<SourceFile>,
@@ -84,6 +85,7 @@ export class SourceFileService {
                 data: sourceFile
             };
         } catch (err) {
+            this.logger.error(err);
             if (sourceFile) {
                 try {
                     const feature = await this.cityDbQueryService.findFeatureByFileId(
@@ -97,7 +99,7 @@ export class SourceFileService {
                             sourceFileId: sourceFile?.id
                         });
                     }
-                } catch (_err) { }
+                } catch (err) { this.logger.error(err); }
             }
 
             // rollback
@@ -109,6 +111,7 @@ export class SourceFileService {
             await queryRunner.release();
 
             // Safely remove temporary files
+            this.logger.log('Remove temporary files')
             const cleanupFiles = [outputPath, createDto.file?.path];
             await this.cleanUpFiles(cleanupFiles);
         }
@@ -178,6 +181,7 @@ export class SourceFileService {
             return updatedSrcFile!;
 
         } catch (err) {
+            this.logger.error(err);
             await queryRunner.rollbackTransaction();
 
             if (err instanceof NotFoundException) {
@@ -189,27 +193,33 @@ export class SourceFileService {
             // release the query runner
             await queryRunner.release();
 
+            this.logger.log('Remove temporary files')
             const cleanupFiles = [outputPath, file.path];
             await this.cleanUpFiles(cleanupFiles);
         }
     }
 
     async findByAssetId(assetId: string) {
-        const key = await this.cacheService.generateKey('assets', assetId);
-        const cached = await this.cacheService.get<SourceFile[]>(key);
-        if (cached) return cached;
-
-        // make sure that the asset exist
-        await this.assetService.findOne(assetId);
-
-        const res = await this.sourceFileRepository.find({
-            where: {
-                asset: { id: assetId }
-            }
-        })
-        await this.cacheService.set(key, res);
-
-        return res
+        try {
+            const key = await this.cacheService.generateKey('assets', assetId);
+            const cached = await this.cacheService.get<SourceFile[]>(key);
+            if (cached) return cached;
+    
+            // make sure that the asset exist
+            await this.assetService.findOne(assetId);
+    
+            const res = await this.sourceFileRepository.find({
+                where: {
+                    asset: { id: assetId }
+                }
+            })
+            await this.cacheService.set(key, res);
+    
+            return res
+        } catch (error) {
+            this.logger.error(error);
+            throw new InternalServerErrorException(`Failed to fetch source files by asset id : ${assetId}`)
+        }
     }
 
     async removeByAssetId(assetId: string) {
@@ -222,6 +232,7 @@ export class SourceFileService {
 
             return { message: 'Successfully removed features' }
         } catch (err) {
+            this.logger.error(err);
             if (err instanceof NotFoundException) {
                 throw err;
             }
@@ -248,6 +259,7 @@ export class SourceFileService {
 
             return { message: 'Successfully removed features' }
         } catch (err) {
+            this.logger.error(err);
             if (err instanceof NotFoundException) {
                 throw err;
             }
@@ -262,6 +274,7 @@ export class SourceFileService {
             try {
                 await fs.promises.unlink(filepath);
             } catch (unlinkErr) {
+                this.logger.error(unlinkErr);
                 const error = unlinkErr as NodeJS.ErrnoException;
 
                 // Ignore errors if the file is already gone

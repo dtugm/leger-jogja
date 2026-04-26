@@ -8,9 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Tiles3D } from '../entities/tiles3d.entity';
 import { DataSource, Repository } from 'typeorm';
 import { UpsertTiles3dDto } from '../dto/upsert-tiles3d.dto';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class Tiles3dService {
+    private readonly logger = new Logger(Tiles3dService.name);
     constructor(
         private readonly storageService: StorageService,
         private readonly zipExtractorService: ZipExtractorService,
@@ -43,7 +45,7 @@ export class Tiles3dService {
 
             if (fileUrl) {
                 const geometry = await this.tileset3dService.loadTilesetFromS3(fileUrl);
-                
+
                 await queryRunner.manager
                     .createQueryBuilder()
                     .update(Tiles3D)
@@ -58,21 +60,27 @@ export class Tiles3dService {
 
             return await this.findOne(tiles3d.id);
         } catch (error) {
+            this.logger.error(error)
+
             await queryRunner.rollbackTransaction();
 
             if (fileUrl) {
+                this.logger.log(`Try to remove uploaded files from cloud storage`)
+
                 const url = new URL(fileUrl);
                 const paths = url.pathname.split('/').filter(Boolean);
                 paths.pop();
                 const prefix = paths.join('/');
 
                 await this.storageService.deleteFolder(prefix);
+                this.logger.log(`Successfully Removed uploaded files from cloud storage`)
             }
 
             throw new InternalServerErrorException('Failed to upload file');
         } finally {
             await queryRunner.release();
             if (file?.path) {
+                this.logger.log('Remove temporary files on the local storage')
                 await this.cleanUpFiles(file.path);
             }
         }
@@ -89,6 +97,7 @@ export class Tiles3dService {
 
             return tiles3d;
         } catch (error) {
+            this.logger.error(error)
             if (error instanceof NotFoundException) throw error;
 
             throw new InternalServerErrorException(`Failed to fetch 3D tiles with id : ${id}`);
@@ -103,9 +112,10 @@ export class Tiles3dService {
                     properties: true,
                     url: true,
                     createdAt: true
-                }
+                },
             });
-        } catch (_error) {
+        } catch (error) {
+            this.logger.error(error)
             throw new InternalServerErrorException('Failed to fetch 3dtiles data');
         }
     }
@@ -136,12 +146,13 @@ export class Tiles3dService {
 
             return { message: 'Successfully removed 3dtiles data' }
         } catch (error) {
+            this.logger.error(error)
             if (error instanceof NotFoundException) throw error;
             throw new InternalServerErrorException('Failed to remove 3dtiles data')
         }
     }
 
     async cleanUpFiles(filepath: string) {
-        await fs.unlink(filepath).catch(() => { })
+        await fs.unlink(filepath).catch((e) => { this.logger.error(e) })
     }
 }

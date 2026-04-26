@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Asset } from '../entities/asset.entity';
 import { Repository } from 'typeorm';
@@ -9,6 +9,8 @@ import { CacheService } from 'src/cache/cache.service';
 
 @Injectable()
 export class AssetService {
+    private readonly logger = new Logger(AssetService.name);
+
     constructor(
         @InjectRepository(Asset)
         private readonly assetRepository: Repository<Asset>,
@@ -32,7 +34,8 @@ export class AssetService {
             await this.cacheService.delByPattern('assets:list:*'); 
     
             return await this.findOne(asset.identifiers[0].id);
-        } catch (_error) {
+        } catch (error) {
+            this.logger.error(error);
             throw new InternalServerErrorException('Failed to save asset data')
         }
     }
@@ -46,6 +49,7 @@ export class AssetService {
     
             return asset;
         } catch (error) {
+            this.logger.error(error);
             if (error instanceof NotFoundException) throw error;
             throw new InternalServerErrorException(`Failed to fetch asset with id : ${id}`);
         }
@@ -92,7 +96,8 @@ export class AssetService {
             await this.cacheService.set(key, response);
     
             return response;
-        } catch (_error) {
+        } catch (error) {
+            this.logger.error(error);
             throw new InternalServerErrorException('Failed to fetch assets')
         }
     }
