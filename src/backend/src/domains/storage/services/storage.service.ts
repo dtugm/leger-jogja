@@ -31,11 +31,14 @@ export interface StorageFolder {
 export class StorageService {
     private readonly client: S3Client;
     private readonly bucketName: string;
+    private readonly publicDomain: string;
+
     constructor(private readonly configService: ConfigService) {
         const endpoint = this.configService.getOrThrow<string>('storage.endpoint');
         const accessKeyId = this.configService.getOrThrow<string>('storage.accessKeyId');
         const secretAccessKey = this.configService.getOrThrow<string>('storage.secretAccessKey');
         const bucketName = this.configService.getOrThrow<string>('storage.bucketName');
+        const publicDomain = this.configService.getOrThrow<string>('storage.publicDomain')
 
         this.client = new S3Client({
             region: 'auto',
@@ -46,6 +49,7 @@ export class StorageService {
             }
         });
         this.bucketName = bucketName;
+        this.publicDomain = publicDomain;
     }
 
     async listFiles(
@@ -135,12 +139,12 @@ export class StorageService {
             },
         });
 
-        const result = await upload.done();
+        await upload.done();
 
         return {
             key,
             contentType: mimetype,
-            url: result.Location
+            url: `${this.publicDomain}/${key}`
         }
     }
 
