@@ -1,7 +1,8 @@
 import "./globals.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { Metadata } from "next";
-import { Geist,Plus_Jakarta_Sans } from "next/font/google";
+import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import { ToastProvider } from "@/components/toast";
@@ -9,7 +10,7 @@ import { LanguageProvider } from "@/lib/i18n";
 import { MapSettingsProvider } from "@/lib/map-settings";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: "Leger Yogyakarta",
