@@ -1,24 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
-import { useMap } from "./maplibre-map";
 import maplibregl from "maplibre-gl";
 import * as pmtiles from "pmtiles";
+import { useEffect } from "react";
 
-/**
- * Register PMTiles protocol for MapLibre
- * Call this once at the top level or inside a hook
- */
+import { useMap } from "./maplibre-map";
+
 export const registerPMTiles = () => {
     try {
-        let protocol = new pmtiles.Protocol();
+        const protocol = new pmtiles.Protocol();
         maplibregl.addProtocol("pmtiles", protocol.tile);
     } catch (e) {
-        // Protocol already registered or other error
     }
 };
-
-// ─── GeoJSON Layer ────────────────────────────────────────────────────────────
 
 interface GeoJSONLayerProps {
     id: string;
@@ -49,85 +43,87 @@ export function GeoJSONLayer({
         const sourceId = `${id}-source`;
         const layerId = `${id}-layer`;
 
-        // Add Source
-        if (!map.getSource(sourceId)) {
-            map.addSource(sourceId, {
-                type: "geojson",
-                data: data,
-                cluster: cluster,
-                clusterMaxZoom: clusterMaxZoom,
-                clusterRadius: clusterRadius,
-            });
-
-            // Add Layer
-            map.addLayer({
-                id: layerId,
-                type: type,
-                source: sourceId,
-                paint: paint,
-                layout: layout,
-            } as any);
-
-            // If clustering is enabled, add cluster layers (circles + counts)
-            if (cluster && type === "circle") {
-                map.addLayer({
-                    id: `${id}-clusters`,
-                    type: "circle",
-                    source: sourceId,
-                    filter: ["has", "point_count"],
-                    paint: {
-                        "circle-color": [
-                            "step",
-                            ["get", "point_count"],
-                            "#51bbd6",
-                            100,
-                            "#f1f075",
-                            750,
-                            "#f28cb1",
-                        ],
-                        "circle-radius": [
-                            "step",
-                            ["get", "point_count"],
-                            20,
-                            100,
-                            30,
-                            750,
-                            40,
-                        ],
-                    },
+        const addLayers = () => {
+            if (!map.getSource(sourceId)) {
+                map.addSource(sourceId, {
+                    type: "geojson",
+                    data: data,
+                    cluster: cluster,
+                    clusterMaxZoom: clusterMaxZoom,
+                    clusterRadius: clusterRadius,
                 });
 
                 map.addLayer({
-                    id: `${id}-cluster-count`,
-                    type: "symbol",
+                    id: layerId,
+                    type: type,
                     source: sourceId,
-                    filter: ["has", "point_count"],
-                    layout: {
-                        "text-field": "{point_count_abbreviated}",
-                        "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-                        "text-size": 12,
-                    },
-                });
+                    paint: paint,
+                    layout: layout,
+                } as any);
 
-                // Add click handler for clusters to zoom in
-                map.on('click', `${id}-clusters`, (e) => {
-                    const features = map.queryRenderedFeatures(e.point, {
-                        layers: [`${id}-clusters`]
+                if (cluster && type === "circle") {
+                    map.addLayer({
+                        id: `${id}-clusters`,
+                        type: "circle",
+                        source: sourceId,
+                        filter: ["has", "point_count"],
+                        paint: {
+                            "circle-color": [
+                                "step",
+                                ["get", "point_count"],
+                                "#51bbd6",
+                                100,
+                                "#f1f075",
+                                750,
+                                "#f28cb1",
+                            ],
+                            "circle-radius": [
+                                "step",
+                                ["get", "point_count"],
+                                20,
+                                100,
+                                30,
+                                750,
+                                40,
+                            ],
+                        },
                     });
-                    const clusterId = features[0].properties.cluster_id;
-                    const source: any = map.getSource(sourceId);
-                    source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
-                        if (err) return;
-                        map.easeTo({
-                            center: (features[0].geometry as any).coordinates,
-                            zoom: zoom
+
+                    map.addLayer({
+                        id: `${id}-cluster-count`,
+                        type: "symbol",
+                        source: sourceId,
+                        filter: ["has", "point_count"],
+                        layout: {
+                            "text-field": "{point_count_abbreviated}",
+                            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+                            "text-size": 12,
+                        },
+                    });
+
+                    map.on('click', `${id}-clusters`, (e) => {
+                        const features = map.queryRenderedFeatures(e.point, {
+                            layers: [`${id}-clusters`]
+                        });
+                        const clusterId = features[0].properties.cluster_id;
+                        const source: any = map.getSource(sourceId);
+                        source.getClusterExpansionZoom(clusterId, (err: any, zoom: number) => {
+                            if (err) return;
+                            map.easeTo({
+                                center: (features[0].geometry as any).coordinates,
+                                zoom: zoom
+                            });
                         });
                     });
-                });
+                }
             }
-        }
+        };
+
+        addLayers();
+        map.on('styledata', addLayers);
 
         return () => {
+            map.off('styledata', addLayers);
             if (map.getLayer(layerId)) map.removeLayer(layerId);
             if (map.getLayer(`${id}-clusters`)) map.removeLayer(`${id}-clusters`);
             if (map.getLayer(`${id}-cluster-count`)) map.removeLayer(`${id}-cluster-count`);
@@ -138,11 +134,9 @@ export function GeoJSONLayer({
     return null;
 }
 
-// ─── Vector Layer (MVT/MBTiles/PMTiles) ───────────────────────────────────────
-
 interface VectorLayerProps {
     id: string;
-    url: string; // "pmtiles://..." or "https://..."
+    url: string;
     sourceLayer: string;
     type: "fill" | "line" | "circle" | "symbol";
     paint?: any;
@@ -165,23 +159,29 @@ export function VectorLayer({
         const sourceId = `${id}-source`;
         const layerId = `${id}-layer`;
 
-        if (!map.getSource(sourceId)) {
-            map.addSource(sourceId, {
-                type: "vector",
-                url: url,
-            });
+        const addLayers = () => {
+            if (!map.getSource(sourceId)) {
+                map.addSource(sourceId, {
+                    type: "vector",
+                    url: url,
+                });
 
-            map.addLayer({
-                id: layerId,
-                type: type,
-                source: sourceId,
-                "source-layer": sourceLayer,
-                paint: paint,
-                layout: layout,
-            } as any);
-        }
+                map.addLayer({
+                    id: layerId,
+                    type: type,
+                    source: sourceId,
+                    "source-layer": sourceLayer,
+                    paint: paint,
+                    layout: layout,
+                } as any);
+            }
+        };
+
+        addLayers();
+        map.on('styledata', addLayers);
 
         return () => {
+            map.off('styledata', addLayers);
             if (map.getLayer(layerId)) map.removeLayer(layerId);
             if (map.getSource(sourceId)) map.removeSource(sourceId);
         };
@@ -190,14 +190,12 @@ export function VectorLayer({
     return null;
 }
 
-// ─── Raster Layer (XYZ/Tiles) ─────────────────────────────────────────────────
-
 interface RasterLayerProps {
     id: string;
-    url: string; // "https://.../{z}/{x}/{y}"
+    url: string;
     tileSize?: number;
     opacity?: number;
-    beforeId?: string; // ID of layer to insert before
+    beforeId?: string;
 }
 
 export function RasterLayer({
@@ -215,27 +213,33 @@ export function RasterLayer({
         const sourceId = `${id}-source`;
         const layerId = `${id}-layer`;
 
-        if (!map.getSource(sourceId)) {
-            map.addSource(sourceId, {
-                type: "raster",
-                tiles: [url],
-                tileSize: tileSize,
-            });
-
-            map.addLayer(
-                {
-                    id: layerId,
+        const addLayers = () => {
+            if (!map.getSource(sourceId)) {
+                map.addSource(sourceId, {
                     type: "raster",
-                    source: sourceId,
-                    paint: {
-                        "raster-opacity": opacity,
-                    },
-                } as any,
-                beforeId
-            );
-        }
+                    tiles: [url],
+                    tileSize: tileSize,
+                });
+
+                map.addLayer(
+                    {
+                        id: layerId,
+                        type: "raster",
+                        source: sourceId,
+                        paint: {
+                            "raster-opacity": opacity,
+                        },
+                    } as any,
+                    beforeId
+                );
+            }
+        };
+
+        addLayers();
+        map.on('styledata', addLayers);
 
         return () => {
+            map.off('styledata', addLayers);
             if (map.getLayer(layerId)) map.removeLayer(layerId);
             if (map.getSource(sourceId)) map.removeSource(sourceId);
         };
@@ -244,16 +248,8 @@ export function RasterLayer({
     return null;
 }
 
-// ─── SHP Support ──────────────────────────────────────────────────────────────
-
-/**
- * Loads and parses a .shp (as zip) or individual shp components into GeoJSON
- * @param url URL to a .zip containing .shp, .dbf, etc.
- * @returns GeoJSON object
- */
 export async function loadShp(url: string): Promise<any> {
     try {
-        // @ts-ignore
         const shp = (await import("shpjs")).default;
         const response = await fetch(url);
         const buffer = await response.arrayBuffer();
@@ -263,4 +259,3 @@ export async function loadShp(url: string): Promise<any> {
         return null;
     }
 }
-

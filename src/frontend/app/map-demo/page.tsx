@@ -1,21 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import MaplibreMap from "@/components/maplibre/maplibre-map";
-import { GeoJSONLayer, registerPMTiles } from "@/components/maplibre/map-helpers";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { useEffect, useState } from "react";
 
-// Initial PMTiles registration
-// registerPMTiles(); // Moved inside component
+import { GeoJSONLayer, registerPMTiles } from "@/components/maplibre/map-helpers";
+import MaplibreMap from "@/components/maplibre/maplibre-map";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 const BASEMAPS = {
     voyager: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
     dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
     positron: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-    osm: "https://demotiles.maplibre.org/style.json",
+    osm: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     satellite: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
     hybrid: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
 };
@@ -46,20 +44,17 @@ export default function MapDemoPage() {
 
     return (
         <div className="w-full h-screen relative overflow-hidden flex flex-col">
-            {/* Header / Info */}
             <div className="p-4 bg-background border-b z-10">
                 <h1 className="text-2xl font-bold">MapLibre Reusable Component Demo</h1>
                 <p className="text-muted-foreground text-sm">Demonstrating basemap switching, vector layers, clustering, and overlays.</p>
             </div>
 
-            {/* Map Area */}
             <div className="flex-1 relative">
                 <MaplibreMap
                     mapStyle={style}
                     center={[110.3671, -7.7956]}
                     zoom={12}
                 >
-                    {/* Vector Layer with Clustering */}
                     {showPoints && (
                         <GeoJSONLayer
                             id="sample-points"
@@ -75,7 +70,6 @@ export default function MapDemoPage() {
                         />
                     )}
 
-                    {/* OVERLAY COMPONENT: Sidebar inside the map container */}
                     <div className="absolute top-4 left-4 w-64 z-20 pointer-events-auto">
                         <Card className="shadow-xl bg-background/90 backdrop-blur">
                             <CardHeader className="pb-2">
@@ -123,12 +117,6 @@ export default function MapDemoPage() {
                         </Card>
                     </div>
 
-                    {/* OVERLAY COMPONENT: Bottom indicator */}
-                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-                        <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg text-sm font-medium flex items-center gap-2 animate-bounce">
-                            <span>🚀 Map is Ready</span>
-                        </div>
-                    </div>
                 </MaplibreMap>
             </div>
         </div>
