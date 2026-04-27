@@ -8,7 +8,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { createLogger } from 'winston';
 import * as winston from 'winston';
 import { utilities as nestWinstonModuleUtilities, WinstonModule } from 'nest-winston';
- 
+
 async function bootstrap() {
   const appName = process.env.APP_NAME || 'Nest'
   const level = process.env.LOG_LEVEL || 'error'
