@@ -5,15 +5,28 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   },
   transpilePackages: ["cesium", "resium"],
-  // async redirects() {
-  //   return [
-  //     {
-  //       source: "/",
-  //       destination: "/dashboard/default",
-  //       permanent: false,
-  //     },
-  //   ];
-  // },
+
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: [{
+        loader: '@svgr/webpack',
+        options: {
+          svgoConfig: {
+            plugins: [{
+              name: 'preset-default',
+              params: {
+                overrides: {
+                  cleanupIds: false
+                }
+              }
+            }]
+          }
+        }
+      }]
+    });
+    return config;
+  }
 };
 
 export default nextConfig;
