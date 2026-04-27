@@ -1,3 +1,9 @@
+tags:
+  - '$TAG_NAME'
+
+substitutions:
+  _TAG: '$TAG_NAME'
+
 steps:
   # Step 1: Build Docker image berdasarkan tag
   - name: 'gcr.io/cloud-builders/docker'
@@ -8,10 +14,10 @@ steps:
       - |
         if [[ "$TAG_NAME" == *"be"* ]]; then
           echo "🔨 Building Backend image..."
-          docker build -t $_IMAGE_NAME:$TAG -f src/backend/Dockerfile src/backend
+          docker build -t $_IMAGE_NAME:$_TAG -f src/backend/Dockerfile src/backend
         elif [[ "$TAG_NAME" == *"fe"* ]]; then
           echo "🔨 Building Frontend image..."
-          docker build -t $_IMAGE_NAME:$TAG -f src/frontend/Dockerfile src/frontend
+          docker build -t $_IMAGE_NAME:$_TAG -f src/frontend/Dockerfile src/frontend
         else
           echo "❌ Error: Tag must contain 'be' or 'fe'"
           exit 1
@@ -23,7 +29,7 @@ steps:
     waitFor: ['build-image']
     args:
       - 'push'
-      - '$_IMAGE_NAME:$TAG'
+      - '$_IMAGE_NAME:$_TAG'
 
 options:
   logging: CLOUD_LOGGING_ONLY
