@@ -6,7 +6,7 @@ import Button from "@/components/button";
 import { useApiHandler } from "@/hooks/use-api-handler";
 import { useAuth } from "@/hooks/use-auth";
 import { useMenu } from "@/hooks/use-menu";
-import { ApiDeleteData,ApiGetData, ApiPostData } from "@/services/api";
+import { ApiDeleteData, ApiGetData, ApiPostData } from "@/services/api";
 import { useAppStore } from "@/store/app-store";
 import { withApiHandler } from "@/utils/with-api-handler";
 
@@ -92,29 +92,29 @@ export default function DemoSkeletonPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-          
+
           SECTION 1: API & TOAST
           <div className="space-y-4 p-6 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800">
             <h2 className="text-xl font-semibold">1. API Helper & Toast</h2>
             <p className="text-sm text-gray-500">Mencoba request HTTP menggunakan Axios/Fetch wrapper yang men-trigger custom toast otomatis.</p>
-            
+
             <div className="flex flex-col gap-3">
-              <button 
-                onClick={handleGetData} 
+              <button
+                onClick={handleGetData}
                 disabled={isLoading}
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50"
               >
                 Test ApiGetData (Success Mock)
               </button>
-              <button 
-                onClick={handlePostData} 
+              <button
+                onClick={handlePostData}
                 disabled={isLoading}
                 className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors disabled:opacity-50"
               >
                 Test ApiPostData (Success Mock)
               </button>
-              <button 
-                onClick={handleDeleteData} 
+              <button
+                onClick={handleDeleteData}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors"
               >
                 Test ApiDeleteData (Error Mock)
@@ -125,11 +125,11 @@ export default function DemoSkeletonPage() {
           <div className="space-y-4 p-6 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800">
             <h2 className="text-xl font-semibold">2. Global Store (Zustand)</h2>
             <p className="text-sm text-gray-500">State management yang persisten antar halaman.</p>
-            
+
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-md">
               <span>Sidebar Status: <strong className={sidebarOpen ? "text-green-500" : "text-red-500"}>{sidebarOpen ? "OPEN" : "CLOSED"}</strong></span>
-              <button 
-                onClick={toggleSidebar} 
+              <button
+                onClick={toggleSidebar}
                 className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors"
               >
                 Toggle
@@ -141,7 +141,7 @@ export default function DemoSkeletonPage() {
           <div className="space-y-4 p-6 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800">
             <h2 className="text-xl font-semibold">3. Auth Token (Encrypted)</h2>
             <p className="text-sm text-gray-500">Token dienkripsi AES-GCM sebelum disimpan ke localStorage.</p>
-            
+
             <div className="text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-md break-all">
               <strong>Current status:</strong> {isAuthenticated ? (
                 <span className="text-green-500">Authenticated (Token Decrypted)</span>
@@ -149,14 +149,14 @@ export default function DemoSkeletonPage() {
             </div>
 
             <div className="flex gap-2">
-              <button 
-                onClick={handleLoginFake} 
+              <button
+                onClick={handleLoginFake}
                 className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-colors"
               >
                 Login (Set Token)
               </button>
-              <button 
-                onClick={removeToken} 
+              <button
+                onClick={removeToken}
                 className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
               >
                 Logout (Remove)
@@ -168,7 +168,7 @@ export default function DemoSkeletonPage() {
           <div className="space-y-4 p-6 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800">
             <h2 className="text-xl font-semibold">4. Menu Service (Role-based)</h2>
             <p className="text-sm text-gray-500">Menu dinamis disave ke localStorage berdasarkan role.</p>
-            
+
             <div className="text-sm p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
               {menu ? (
                 <div>
@@ -183,14 +183,14 @@ export default function DemoSkeletonPage() {
             </div>
 
             <div className="flex gap-2">
-              <button 
-                onClick={handleSetAdminMenu} 
+              <button
+                onClick={handleSetAdminMenu}
                 className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors"
               >
                 Set Menu
               </button>
-              <button 
-                onClick={clearMenu} 
+              <button
+                onClick={clearMenu}
                 className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors"
               >
                 Clear
@@ -201,7 +201,7 @@ export default function DemoSkeletonPage() {
           {/* SECTION 5: BUTTON COMPONENT */}
           <div className="col-span-2 space-y-4 p-6 bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800">
             <h2 className="text-xl font-semibold">5. Button Component</h2>
-            
+
             {/* Primary */}
             <div className="space-y-2">
               <h3>Primary</h3>
