@@ -3,11 +3,11 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install pnpm for faster and more reliable builds
-RUN npm install -g pnpm
+# Install pnpm (pin to v10 for lockfile v9.0 compatibility)
+RUN npm install -g pnpm@10
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* package-lock.json* ./
+# Copy package files and workspace config
+COPY package.json pnpm-lock.yaml* package-lock.json* pnpm-workspace.yaml* ./
 
 # Install dependencies
 RUN \
@@ -21,6 +21,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Pass NEXT_PUBLIC_ variables during build (Next.js bakes them into the client bundle)
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+ARG NEXT_PUBLIC_TOKEN_ENCRYPTION_KEY=temporary_key_for_build_purposes
+
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_TOKEN_ENCRYPTION_KEY=$NEXT_PUBLIC_TOKEN_ENCRYPTION_KEY
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
