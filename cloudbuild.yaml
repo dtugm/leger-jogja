@@ -1,3 +1,9 @@
+tags:
+  - '$TAG_NAME'
+
+substitutions:
+  _TAG: '$TAG_NAME'
+
 steps:
   # Step 1: Build Docker image berdasarkan tag
   - name: 'gcr.io/cloud-builders/docker'
