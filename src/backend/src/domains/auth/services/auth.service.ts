@@ -86,18 +86,26 @@ export class AuthService {
     const jwtRefreshExpiresIn = this.configService.getOrThrow<StringValue>(
       'auth.jwtRefreshExpiresIn',
     );
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: jwtSecret,
-        expiresIn,
-      }),
-      this.jwtService.signAsync(refreshPayload, {
-        secret: jwtRefreshSecret,
-        expiresIn: jwtRefreshExpiresIn,
-      }),
-    ]);
-
-    return { accessToken, refreshToken, expiresIn, tokenType: 'Bearer' };
+    
+    try {
+      const [accessToken, refreshToken] = await Promise.all([
+        this.jwtService.signAsync(payload, {
+          secret: jwtSecret,
+          expiresIn,
+        }),
+        this.jwtService.signAsync(refreshPayload, {
+          secret: jwtRefreshSecret,
+          expiresIn: jwtRefreshExpiresIn,
+        }),
+      ]);
+      return { accessToken, refreshToken, expiresIn, tokenType: 'Bearer' };
+    } catch (e) {
+      this.logger.error(
+          'Failed to sign token!',
+          e instanceof Error ? e.stack : String(e),
+      );
+     throw new InternalServerErrorException('Failed to sign token!'); 
+    }
   }
 
   async login(user: UserResponseDto) {
@@ -122,9 +130,6 @@ export class AuthService {
     }
     // find user
     const user = await this.usersService.findActiveUserById(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
 
     const token = await this.generateTokens(user);
     return {
