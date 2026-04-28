@@ -12,7 +12,7 @@ type BoxOutput = {
 
 @Injectable()
 export class Tileset3dService {
-  constructor (private readonly storageService: StorageService) {}
+  constructor(private readonly storageService: StorageService) { }
 
   /** Multiply 4x4 column-major matrix by 4-vector [x,y,z,1] */
   private mulMat4Vec3_colMajor(mat: number[], x: number, y: number, z: number) {
@@ -64,9 +64,9 @@ export class Tileset3dService {
     if (!Array.isArray(transform) || transform.length !== 16) throw new Error('transform must be length 16');
 
     const [cx, cy, cz,
-          hx, hy, hz,
-          ux, uy, uz,
-          vx, vy, vz] = box;
+      hx, hy, hz,
+      ux, uy, uz,
+      vx, vy, vz] = box;
 
     // generate corners in local coords: center ± h ± u
     const cornersLocal = [
@@ -106,18 +106,20 @@ export class Tileset3dService {
     };
   }
 
-  async loadTilesetFromS3(fileUrl: string): Promise<{ polygon: string, minH: any, maxH: any }>  {
-    const regex = /^https:\/\/([a-z0-9-]+\.s3\.[a-z0-9-]+\.amazonaws\.com|[a-z0-9-]+\.[a-z0-9]+\.r2\.cloudflarestorage\.com)\//i;
+  async loadTilesetFromS3(fileUrl: string): Promise<{ polygon: string, minH: any, maxH: any }> {
+    // Opsi jika nama "bucket"-nya fleksibel (misal: apapun.dt-legger.geo-ai.id)
+    const regex = /^https:\/\/([a-z0-9-]+\.s3\.[a-z0-9-]+\.amazonaws\.com|[a-z0-9-]+\.[a-z0-9-]+\.geo-ai\.id)\//i;
+
     if (!regex.test(fileUrl)) {
-      throw new Error('Wrong url')
+      throw new Error('Wrong url');
     }
-    
+
     const parsedUrl = new URL(fileUrl);
     // pathname starts with `/` → remove leading slash
     let key = parsedUrl.pathname;
     if (key.startsWith('/')) key = key.slice(1);
     // Decode URL-encoded characters (like %20 → space)
-    key = decodeURIComponent(key);  
+    key = decodeURIComponent(key);
 
     const byteArray = await this.storageService.getFile(key)
     const jsonString = Buffer.from(byteArray).toString('utf-8');
@@ -138,15 +140,15 @@ export class Tileset3dService {
     } else if (tileset?.root?.boundingVolume?.region) {
       const region = tileset?.root?.boundingVolume?.region
       if (!region) throw new Error('Region should be exist');
-  
+
       const [west, south, east, north, minHeight, maxHeight] = region;
-  
+
       // Convert radians -> degrees
       const westDeg = (west * 180) / Math.PI;
       const southDeg = (south * 180) / Math.PI;
       const eastDeg = (east * 180) / Math.PI;
       const northDeg = (north * 180) / Math.PI;
-  
+
       // Build POLYGON WKT (lon/lat in degrees)
       polygon = `POLYGON((
         ${westDeg} ${southDeg},

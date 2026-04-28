@@ -312,18 +312,12 @@ export class UsersService {
       actor: UserResponseDto,
       requestedRole: UserRole,
   ): UserRole {
-    if (requestedRole === UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException(
-          'super_admin can only be created manually through the database',
-      );
-    }
-
     if (actor.role === UserRole.SUPER_ADMIN) {
       return requestedRole;
     }
 
-    if (actor.role === UserRole.ADMIN) {
-      return UserRole.USER;
+    if (actor.role === UserRole.ADMIN && requestedRole != UserRole.SUPER_ADMIN) {
+      return requestedRole;
     }
 
     throw new ForbiddenException('You do not have permission to create users');
@@ -337,11 +331,8 @@ export class UsersService {
       return requestedRole;
     }
 
-    if (actor.role === UserRole.ADMIN) {
-      if (requestedRole !== UserRole.USER) {
-        throw new ForbiddenException('Admin can only assign the user role');
-      }
-      return UserRole.USER;
+    if (actor.role === UserRole.ADMIN && requestedRole != UserRole.SUPER_ADMIN) {
+      return requestedRole;
     }
 
     throw new ForbiddenException('You do not have permission to update roles');
