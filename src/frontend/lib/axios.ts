@@ -10,7 +10,6 @@ const api = axios.create({
     withCredentials: true
 });
 
-// Attach token otomatis di setiap request
 api.interceptors.request.use((config) => {
     const token = useAuthStore.getState().token
     if (token) {
@@ -20,14 +19,12 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Handle response error global
 api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token expired/invalid, hapus cookie dan redirect ke login
             document.cookie = "token=; max-age=0; path=/";
-            window.location.href = "/demo/auth/login";
+            window.location.href = "/auth/login";
         }
         return Promise.reject(error);
     }
