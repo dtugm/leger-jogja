@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { MenuAdminTreeResponseDto } from './dto/menu-admin-tree-response.dto';
@@ -48,6 +50,7 @@ type MenuConstraintError = {
 
 @Injectable()
 export class MenusService {
+  private readonly logger = new Logger(MenusService.name)
   constructor(
       @InjectRepository(Menu)
       private readonly menusRepository: Repository<Menu>,
@@ -92,11 +95,19 @@ export class MenusService {
     const cached = await this.cacheService.get<MenuTreeResponseDto[]>(key);
     if (cached) return cached;
 
-    const menus = await this.findVisibleMenus(actor.role);
-    const response = this.buildPublicTree(menus);
-    await this.cacheService.set(key, response);
+    try {
+      const menus = await this.findVisibleMenus(actor.role);
+      const response = this.buildPublicTree(menus);
+      await this.cacheService.set(key, response);
 
-    return response;
+      return response;  
+    } catch (e) {
+      this.logger.error(
+          'Failed to fetch all menu',
+          e instanceof Error ? e.stack : String(e)
+      );
+      throw new InternalServerErrorException('Failed to fetch all menu')
+    }
   }
 
   async findAllForSuperAdmin(
@@ -112,32 +123,40 @@ export class MenusService {
             key,
         );
     if (cached) return cached;
+    
+    try {
+      const menus = await this.menusRepository.find({
+        order: {
+          index: 'ASC',
+          createdAt: 'ASC',
+        },
+      });
 
-    const menus = await this.menusRepository.find({
-      order: {
-        index: 'ASC',
-        createdAt: 'ASC',
-      },
-    });
+      const tree = this.buildAdminTree(menus);
+      const total = tree.length;
+      const page = query.page;
+      const limit = query.limit;
+      const start = (page - 1) * limit;
 
-    const tree = this.buildAdminTree(menus);
-    const total = tree.length;
-    const page = query.page;
-    const limit = query.limit;
-    const start = (page - 1) * limit;
+      const response = {
+        result: tree.slice(start, start + limit),
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
+      await this.cacheService.set(key, response);
 
-    const response = {
-      result: tree.slice(start, start + limit),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit) || 1,
-      },
-    };
-    await this.cacheService.set(key, response);
-
-    return response;
+      return response;
+    } catch (e) {
+      this.logger.error(
+          'Failed to fetch all menu for super admin',
+          e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException('Failed to fetch all menu for super admin')
+    }
   }
 
   async findOne(actor: UserResponseDto, id: string): Promise<MenuResponseDto> {
@@ -267,21 +286,31 @@ export class MenusService {
       role: UserRole,
       id: string,
   ): Promise<Menu> {
-    const queryBuilder = this.menusRepository
-        .createQueryBuilder('menu')
-        .where('menu.id = :id', { id });
+    try {
+      const queryBuilder = this.menusRepository
+          .createQueryBuilder('menu')
+          .where('menu.id = :id', { id });
 
-    if (role !== UserRole.SUPER_ADMIN) {
-      queryBuilder.andWhere(':role = ANY(menu.roles)', { role });
+      
+      if (role !== UserRole.SUPER_ADMIN) {
+        queryBuilder.andWhere(':role = ANY(menu.roles)', { role });
+      }
+
+      const menu = await queryBuilder.getOne();
+
+      if (!menu) {
+        throw new NotFoundException('Menu not found');
+      }
+
+      return menu;
+    } catch (e) {
+      this.logger.error(
+          `Failed to fetch menu with ID: ${id}`,
+          e instanceof Error ? e.stack : String(e),
+      );
+      if (e instanceof NotFoundException) throw e
+      throw new InternalServerErrorException('Failed to fetch all menu for super admin')
     }
-
-    const menu = await queryBuilder.getOne();
-
-    if (!menu) {
-      throw new NotFoundException('Menu not found');
-    }
-
-    return menu;
   }
 
   private async findMenuOrThrow(
@@ -558,6 +587,9 @@ export class MenusService {
       try {
         return await callback(manager);
       } catch (error) {
+        this.logger.error(
+            error instanceof Error ? error.stack : String(error)
+        );
         this.rethrowPersistenceError(error);
       }
     });
@@ -592,6 +624,6 @@ export class MenusService {
       }
     }
 
-    throw error;
+    throw InternalServerErrorException(error);
   }
 }
