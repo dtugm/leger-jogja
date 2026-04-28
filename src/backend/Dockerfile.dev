@@ -1,0 +1,26 @@
+# Menggunakan Node.js 20 Alpine untuk image yang ringan
+FROM node:20-alpine
+
+# Install dependencies sistem yang dibutuhkan untuk GIS dan Docker-in-Docker (sibling)
+RUN apk add --no-cache \
+    bash \
+    curl \
+    docker-cli
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files terlebih dahulu agar docker layer caching maksimal
+COPY package*.json ./
+
+# Install semua dependencies (termasuk devDependencies)
+RUN npm install
+
+# Copy sisa source code
+COPY . .
+
+# Expose port untuk aplikasi (3000) dan Debugger (9229)
+EXPOSE ${PORT:-3000}
+
+# Jalankan aplikasi dalam mode development
+CMD ["npm", "run", "start:dev"]

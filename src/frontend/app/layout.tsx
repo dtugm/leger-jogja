@@ -1,4 +1,5 @@
 import "./globals.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -8,8 +9,6 @@ import { ToastProvider } from "@/components/toast";
 import { LanguageProvider } from "@/lib/i18n";
 import { MapSettingsProvider } from "@/lib/map-settings";
 import { cn } from "@/lib/utils";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Leger Yogyakarta",
