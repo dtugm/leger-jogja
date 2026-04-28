@@ -1,17 +1,16 @@
 import "./globals.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 
 import { ToastProvider } from "@/components/toast";
 import { LanguageProvider } from "@/lib/i18n";
 import { MapSettingsProvider } from "@/lib/map-settings";
+import { cn } from "@/lib/utils";
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: "Leger Yogyakarta",
@@ -25,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${jakarta.variable} min-h-screen antialiased`}>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+      <body className={`${geist.variable} min-h-screen antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <LanguageProvider>
             <MapSettingsProvider>
