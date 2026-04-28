@@ -101,7 +101,7 @@ export class CitydbToolController {
   async importCityGml(
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() currentUser: UserResponseDto,
-    @Body() importMode: ImportMode
+    @Body() body: { importMode: ImportMode }
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
@@ -111,9 +111,10 @@ export class CitydbToolController {
       return await this.cityDbToolService.importCityGml({
         inputFile: file.path,
         importer: currentUser.fullname,
-        importMode
+        importMode: body.importMode
       });
     } catch (error) {
+      this.logger.error(error)
       throw new InternalServerErrorException('Failed to import gml data')
     } finally {
       if (file.path && fs.existsSync(file.path)) {

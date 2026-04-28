@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { UserRole } from '../../users/entities/user.entity';
 
-@Entity('menus')
+@Entity('menus', { schema: 'public' })
 export class Menu {
   @PrimaryColumn({ type: 'uuid' })
   id: string;
