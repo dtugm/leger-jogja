@@ -8,7 +8,7 @@ export class Tiles3DProperty {
     description?: string;
 }
 
-@Entity('tiles_3d')
+@Entity('tiles_3d', { schema: 'public' })
 export class Tiles3D {
     @PrimaryGeneratedColumn('uuid')
     id: string;
