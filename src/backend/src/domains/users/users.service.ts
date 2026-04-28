@@ -2,6 +2,8 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,6 +23,7 @@ import { CacheService } from 'src/cache/cache.service';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   constructor(
       @InjectRepository(User)
       private readonly usersRepository: Repository<User>,
@@ -42,7 +45,15 @@ export class UsersService {
       role,
     });
 
-    await this.cacheService.delByPattern('users:list:*');
+    try {
+      await this.cacheService.delByPattern('users:list:*');  
+    } catch (e) {
+     this.logger.error(
+         `Failed to create user ${createUserDto.username}`,
+         e instanceof Error ? e.stack : String(e),
+     );
+     throw new InternalServerErrorException(`Failed to create ${createUserDto.username}`)
+    }
 
     return response;
   }
@@ -56,7 +67,15 @@ export class UsersService {
       role: UserRole.USER,
     });
 
-    await this.cacheService.delByPattern('users:list:*');
+    try {
+      await this.cacheService.delByPattern('users:list:*');
+    } catch (err) {
+      this.logger.error(
+          `Failed to register ${registerDto.username}`,
+          err instanceof Error ? err.stack : String(err),
+      );
+      throw new InternalServerErrorException(`Failed to register ${registerDto.username}`);
+    }
 
     return response;
   }
@@ -112,15 +131,31 @@ export class UsersService {
         filterableFields: ['role'],
       },
     };
-    await this.cacheService.set(key, response);
+    
+    try {
+      await this.cacheService.set(key, response);  
+    } catch (e) {
+      this.logger.error(
+          'Failed to fetch all user',
+          e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException('Failed to fetch all user')
+    }
 
     return response;
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
-    const user = await this.findActiveUserById(id);
-
-    return this.toResponse(user);
+    try {
+      const user = await this.findActiveUserById(id);
+      return this.toResponse(user);
+    } catch (e) {
+     this.logger.error(
+         `Failed to fetch user with ID ${id}`,
+         e instanceof Error ? e.stack : String(e),
+     );
+     throw new InternalServerErrorException(`Failed to fetch user with ID ${id}`)
+    }
   }
 
   async findActiveUserById(id: string): Promise<User> {
@@ -207,11 +242,18 @@ export class UsersService {
     if (updateUserDto.password) {
       user.password = await this.passwordService.hash(updateUserDto.password);
     }
-
-    const updatedUser = await this.usersRepository.save(user);
-    await this.cacheService.delByPattern('users:list:*');
-
-    return this.toResponse(updatedUser);
+    
+    try {
+      const updatedUser = await this.usersRepository.save(user);
+      await this.cacheService.delByPattern('users:list:*');
+      return this.toResponse(updatedUser);
+    } catch (e) {
+     this.logger.error(
+         `Failed to update user with ID ${user.id}`,
+         e instanceof Error ? e.stack : String(e)
+     );
+     throw new InternalServerErrorException(`Failed to update user with ID ${user.id}`);
+    }
   }
 
   async remove(actor: UserResponseDto, id: string): Promise<void> {
@@ -220,9 +262,16 @@ export class UsersService {
     }
 
     const user = await this.findActiveUserById(id);
-
-    await this.usersRepository.softDelete({ id: user.id });
-    await this.cacheService.delByPattern('users:list:*');
+    try {
+      await this.usersRepository.softDelete({ id: user.id });
+      await this.cacheService.delByPattern('users:list:*');  
+    } catch (e) {
+      this.logger.error(
+          `Failed to delete user with ID ${user.id}`,
+          e instanceof Error ? e.stack : String(e)
+      );
+      throw new InternalServerErrorException(`Failed to delete user with ID ${user.id}`);
+    }
   }
 
   async findOneForCurrentUser(id: string): Promise<UserResponseDto> {
