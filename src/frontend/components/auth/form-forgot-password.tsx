@@ -21,18 +21,18 @@ export default function FormForgotPassword() {
   return (
     <>
       <div className="space-y-1 text-center">
-        <h1 className="text-2xl font-bold text-primary-600">Forgot Password?</h1>
-        <p className="text-sm text-gray-500">Enter your email to reset your password</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-primary-600">Forgot Password?</h1>
+        <p className="text-sm text-muted-foreground">Enter your email to reset your password</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <FormField label="Email" type="email" registration={register("email")} error={errors.email?.message} />
+        <FormField label="Email" type="email" registration={register("email")} error={errors.email?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
         <Button variant="primary" size="md" text="Send reset link" fullW disabled={isSubmitting} />
       </form>
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-muted-foreground">
         Remember your password?{" "}
-        <Link href="/demo/auth/login" className="text-primary-500 font-semibold">Sign in</Link>
+        <Link href="/auth/login" className="text-primary-500 font-semibold">Sign in</Link>
       </p>
     </>
   );
