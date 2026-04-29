@@ -11,7 +11,7 @@ COPY package.json pnpm-lock.yaml* package-lock.json* pnpm-workspace.yaml* ./
 
 # Install dependencies
 RUN \
-  if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
+  if [ -f pnpm-lock.yaml ]; then pnpm install --no-frozen-lockfile; \
   elif [ -f package-lock.json ]; then npm ci; \
   else npm install; \
   fi
