@@ -110,6 +110,30 @@ export class MenusService {
     }
   }
 
+  async findParentMenus(actor: UserResponseDto): Promise<MenuTreeResponseDto[]> {
+    const key = await this.cacheService.generateKey(
+        'menus',
+        'parents',
+        actor.role,
+    );
+    const cached = await this.cacheService.get<MenuTreeResponseDto[]>(key);
+    if (cached) return cached;
+
+    try {
+      const menus = await this.findVisibleParentMenus(actor.role);
+      const response = this.buildPublicParentNodes(menus);
+      await this.cacheService.set(key, response);
+
+      return response;
+    } catch (e) {
+      this.logger.error(
+          'Failed to fetch parent menus',
+          e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException('Failed to fetch parent menus');
+    }
+  }
+
   async findAllForSuperAdmin(
       query: ListMenusQueryDto,
   ): Promise<PagedResponseDto<MenuAdminTreeResponseDto>> {
@@ -279,6 +303,30 @@ export class MenusService {
     if (role !== UserRole.SUPER_ADMIN) {
       queryBuilder.where(':role = ANY(menu.roles)', { role });
     }
+    return queryBuilder.getMany();
+  }
+
+  private async findVisibleParentMenus(role: UserRole): Promise<Menu[]> {
+    const queryBuilder = this.menusRepository
+        .createQueryBuilder('menu')
+        .where('menu.parentId IS NULL')
+        .orderBy('menu.index', 'ASC')
+        .addOrderBy('menu.createdAt', 'ASC')
+        .select([
+          'menu.id',
+          'menu.parentId',
+          'menu.name',
+          'menu.icon',
+          'menu.href',
+          'menu.index',
+          'menu.roles',
+          'menu.createdAt',
+        ]);
+
+    if (role !== UserRole.SUPER_ADMIN) {
+      queryBuilder.andWhere(':role = ANY(menu.roles)', { role });
+    }
+
     return queryBuilder.getMany();
   }
 
@@ -506,6 +554,21 @@ export class MenusService {
     }));
 
     return this.stripTreeMetadata(tree);
+  }
+
+  private buildPublicParentNodes(menus: Menu[]): MenuTreeResponseDto[] {
+    const nodes: MenuTreeNode[] = menus.map((menu) => ({
+      id: menu.id,
+      parentId: menu.parentId,
+      name: menu.name,
+      icon: menu.icon,
+      href: menu.href,
+      index: menu.index,
+      createdAt: menu.createdAt,
+      children: [],
+    }));
+
+    return this.stripTreeMetadata(this.sortNodes(nodes));
   }
 
   private buildAdminTree(menus: Menu[]): MenuAdminTreeResponseDto[] {

@@ -18,6 +18,7 @@ import { UsersService } from '../../users/users.service';
 import { RegisterDto } from '../dto/register.dto';
 import { PasswordResetToken } from '../entities/password-reset-token.entity';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import { LoginResponseDto } from '../dto/login-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -108,16 +109,20 @@ export class AuthService {
     }
   }
 
-  async login(user: UserResponseDto) {
-    const token = await this.generateTokens(user);
+  async login(user: UserResponseDto): Promise<LoginResponseDto> {
+    const [token, menus] = await Promise.all([
+      this.generateTokens(user),
+      this.usersService.findCurrentUserProfile(user.id)
+    ])
 
     return {
       ...token,
       user,
+      menus,
     };
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
     const payload = await this.jwtService.verifyAsync<JwtPayload>(
       refreshToken,
       {
@@ -128,13 +133,17 @@ export class AuthService {
     if (payload.type !== 'refresh') {
       throw new UnauthorizedException('Invalid token type');
     }
-    // find user
     const user = await this.usersService.findActiveUserById(payload.sub);
 
-    const token = await this.generateTokens(user);
+    const [token, menus] = await Promise.all([
+      this.generateTokens(user),
+      this.usersService.findCurrentUserProfile(user.id)
+    ])
+    
     return {
       ...token,
       user: this.usersService.toResponse(user),
+      menus
     };
   }
 

@@ -73,7 +73,7 @@ export class MenusController {
   findMyMenus(
     @CurrentUser() currentUser: UserResponseDto,
   ): Promise<MenuTreeResponseDto[]> {
-    return this.menusService.findAll(currentUser);
+    return this.menusService.findParentMenus(currentUser);
   }
 
   @Get(':id')
