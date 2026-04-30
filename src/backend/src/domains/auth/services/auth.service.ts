@@ -87,7 +87,7 @@ export class AuthService {
     const jwtRefreshExpiresIn = this.configService.getOrThrow<StringValue>(
       'auth.jwtRefreshExpiresIn',
     );
-    
+
     try {
       const [accessToken, refreshToken] = await Promise.all([
         this.jwtService.signAsync(payload, {
@@ -102,23 +102,29 @@ export class AuthService {
       return { accessToken, refreshToken, expiresIn, tokenType: 'Bearer' };
     } catch (e) {
       this.logger.error(
-          'Failed to sign token!',
-          e instanceof Error ? e.stack : String(e),
+        'Failed to sign token!',
+        e instanceof Error ? e.stack : String(e),
       );
-     throw new InternalServerErrorException('Failed to sign token!'); 
+      throw new InternalServerErrorException('Failed to sign token!');
     }
   }
 
   async login(user: UserResponseDto): Promise<LoginResponseDto> {
-    const [token, menus] = await Promise.all([
+    return this.buildLoginResponse(user);
+  }
+
+  private async buildLoginResponse(
+    user: UserResponseDto,
+  ): Promise<LoginResponseDto> {
+    const [token, currentUser] = await Promise.all([
       this.generateTokens(user),
-      this.usersService.findCurrentUserProfile(user.id)
-    ])
+      this.usersService.findCurrentUserProfile(user.id),
+    ]);
 
     return {
       ...token,
       user,
-      menus,
+      availableMenus: currentUser.availableMenus,
     };
   }
 
@@ -134,17 +140,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid token type');
     }
     const user = await this.usersService.findActiveUserById(payload.sub);
-
-    const [token, menus] = await Promise.all([
-      this.generateTokens(user),
-      this.usersService.findCurrentUserProfile(user.id)
-    ])
-    
-    return {
-      ...token,
-      user: this.usersService.toResponse(user),
-      menus
-    };
+    return this.buildLoginResponse(this.usersService.toResponse(user));
   }
 
   async requestPasswordReset(email: string) {
@@ -190,7 +186,7 @@ export class AuthService {
         user.fullname,
         resetUrl,
       );
-      
+
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
