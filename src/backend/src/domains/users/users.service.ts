@@ -25,96 +25,115 @@ import { CacheService } from 'src/cache/cache.service';
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   constructor(
-      @InjectRepository(User)
-      private readonly usersRepository: Repository<User>,
-      private readonly passwordService: PasswordService,
-      private readonly menusService: MenusService,
-      private readonly cacheService: CacheService,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
+    private readonly passwordService: PasswordService,
+    private readonly menusService: MenusService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async create(
-      actor: UserResponseDto,
-      createUserDto: CreateUserDto,
+    actor: UserResponseDto,
+    createUserDto: CreateUserDto,
   ): Promise<UserResponseDto> {
     const role = this.resolveCreateRole(actor, createUserDto.role);
-    const response = await this.createUserRecord({
-      email: createUserDto.email,
-      username: createUserDto.username,
-      fullname: createUserDto.fullname,
-      password: createUserDto.password,
-      role,
-    });
+    const response = await this.createUserRecord(
+      {
+        email: createUserDto.email,
+        username: createUserDto.username,
+        fullname: createUserDto.fullname,
+        password: createUserDto.password,
+        role,
+      },
+      `Failed to create user ${createUserDto.username}`,
+    );
 
     try {
-      await this.cacheService.delByPattern('users:list:*');  
+      await this.cacheService.delByPattern('users:list:*');
     } catch (e) {
-     this.logger.error(
-         `Failed to create user ${createUserDto.username}`,
-         e instanceof Error ? e.stack : String(e),
-     );
-     throw new InternalServerErrorException(`Failed to create ${createUserDto.username}`)
+      this.logger.error(
+        `Failed to create user ${createUserDto.username}`,
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException(
+        `Failed to create ${createUserDto.username}`,
+      );
     }
 
     return response;
   }
 
   async register(registerDto: RegisterDto): Promise<UserResponseDto> {
-    const response = await this.createUserRecord({
-      email: registerDto.email,
-      username: registerDto.username,
-      fullname: registerDto.fullname,
-      password: registerDto.password,
-      role: UserRole.USER,
-    });
+    const response = await this.createUserRecord(
+      {
+        email: registerDto.email,
+        username: registerDto.username,
+        fullname: registerDto.fullname,
+        password: registerDto.password,
+        role: UserRole.USER,
+      },
+      `Failed to register ${registerDto.username}`,
+    );
 
     try {
       await this.cacheService.delByPattern('users:list:*');
     } catch (err) {
       this.logger.error(
-          `Failed to register ${registerDto.username}`,
-          err instanceof Error ? err.stack : String(err),
+        `Failed to register ${registerDto.username}`,
+        err instanceof Error ? err.stack : String(err),
       );
-      throw new InternalServerErrorException(`Failed to register ${registerDto.username}`);
+      throw new InternalServerErrorException(
+        `Failed to register ${registerDto.username}`,
+      );
     }
 
     return response;
   }
 
   async findAll(
-      query: ListUsersQueryDto,
+    query: ListUsersQueryDto,
   ): Promise<PagedResponseDto<UserResponseDto>> {
     const key = await this.cacheService.generateKey(
-        'users',
-        'list',
-        this.cacheService.generateQueryHash(query),
+      'users',
+      'list',
+      this.cacheService.generateQueryHash(query),
     );
-    const cached = await this.cacheService.get<PagedResponseDto<UserResponseDto>>(
-        key,
-    );
+    const cached =
+      await this.cacheService.get<PagedResponseDto<UserResponseDto>>(key);
     if (cached) return cached;
 
-    const builder = this.usersRepository.createQueryBuilder('user');
+    let users: User[] = [];
+    let total = 0;
+    try {
+      const builder = this.usersRepository.createQueryBuilder('user');
 
-    if (query.search) {
-      const search = `%${query.search.trim()}%`;
-      builder.andWhere(
+      if (query.search) {
+        const search = `%${query.search.trim()}%`;
+        builder.andWhere(
           new Brackets((qb) => {
             qb.where('user.email ILIKE :search', { search })
-                .orWhere('user.username ILIKE :search', { search })
-                .orWhere('user.fullname ILIKE :search', { search });
+              .orWhere('user.username ILIKE :search', { search })
+              .orWhere('user.fullname ILIKE :search', { search });
           }),
-      );
-    }
+        );
+      }
 
-    if (query.role) {
-      builder.andWhere('user.role = :role', { role: query.role });
-    }
+      if (query.role) {
+        builder.andWhere('user.role = :role', { role: query.role });
+      }
 
-    const [users, total] = await builder
+      [users, total] = await builder
         .orderBy('user.created_at', 'DESC')
         .skip((query.page - 1) * query.limit)
         .take(query.limit)
         .getManyAndCount();
+    } catch (e) {
+      this.logger.error(
+        'Failed to fetch all user',
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException('Failed to fetch all user');
+    }
 
     const limit = query.limit || 20;
     const totalPages = Math.ceil(total / limit) || 1;
@@ -122,44 +141,47 @@ export class UsersService {
       result: users.map((user) => this.toResponse(user)),
       pagination: {
         page: query.page,
-        limit: limit,
+        limit,
         total,
-        totalPages: totalPages,
+        totalPages,
       },
       metadata: {
         searchableFields: ['email', 'username', 'fullname'],
         filterableFields: ['role'],
       },
     };
-    
+
     try {
-      await this.cacheService.set(key, response);  
+      await this.cacheService.set(key, response);
     } catch (e) {
       this.logger.error(
-          'Failed to fetch all user',
-          e instanceof Error ? e.stack : String(e),
+        'Failed to fetch all user',
+        e instanceof Error ? e.stack : String(e),
       );
-      throw new InternalServerErrorException('Failed to fetch all user')
+      throw new InternalServerErrorException('Failed to fetch all user');
     }
 
     return response;
   }
 
   async findOne(id: string): Promise<UserResponseDto> {
-    try {
-      const user = await this.findActiveUserById(id);
-      return this.toResponse(user);
-    } catch (e) {
-     this.logger.error(
-         `Failed to fetch user with ID ${id}`,
-         e instanceof Error ? e.stack : String(e),
-     );
-     throw new InternalServerErrorException(`Failed to fetch user with ID ${id}`)
-    }
+    const user = await this.findActiveUserById(id);
+    return this.toResponse(user);
   }
 
   async findActiveUserById(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id } });
+    let user: User | null;
+    try {
+      user = await this.usersRepository.findOne({ where: { id } });
+    } catch (e) {
+      this.logger.error(
+        `Failed to fetch user with ID ${id}`,
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException(
+        `Failed to fetch user with ID ${id}`,
+      );
+    }
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -169,24 +191,35 @@ export class UsersService {
   }
 
   async findActiveUserForAuth(identifier: string): Promise<User | null> {
-    return this.usersRepository
+    try {
+      return await this.usersRepository
         .createQueryBuilder('user')
         .addSelect('user.password')
         .where('user.deleted_at IS NULL')
         .andWhere(
-            new Brackets((qb) => {
-              qb.where('LOWER(user.email) = LOWER(:identifier)', {
-                identifier,
-              }).orWhere('LOWER(user.username) = LOWER(:identifier)', {
-                identifier,
-              });
-            }),
+          new Brackets((qb) => {
+            qb.where('LOWER(user.email) = LOWER(:identifier)', {
+              identifier,
+            }).orWhere('LOWER(user.username) = LOWER(:identifier)', {
+              identifier,
+            });
+          }),
         )
         .getOne();
+    } catch (e) {
+      this.logger.error(
+        'Failed to fetch user for authentication',
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException(
+        'Failed to fetch user for authentication',
+      );
+    }
   }
 
   async findActiveUserByEmail(email: string): Promise<User | null> {
-    return this.usersRepository
+    try {
+      return await this.usersRepository
         .createQueryBuilder('user')
         .addSelect('user.password')
         .where('user.deleted_at IS NULL')
@@ -194,38 +227,55 @@ export class UsersService {
           email: email.trim(),
         })
         .getOne();
+    } catch (e) {
+      this.logger.error(
+        'Failed to fetch user by email',
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException('Failed to fetch user by email');
+    }
   }
 
   async updatePassword(userId: string, password: string): Promise<void> {
     const user = await this.findActiveUserById(userId);
     user.password = await this.passwordService.hash(password);
-    await this.usersRepository.save(user);
+    try {
+      await this.usersRepository.save(user);
+    } catch (e) {
+      this.logger.error(
+        `Failed to update password for user with ID ${userId}`,
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException(
+        `Failed to update password for user with ID ${userId}`,
+      );
+    }
   }
 
   async update(
-      actor: UserResponseDto,
-      id: string,
-      updateUserDto: UpdateUserDto,
+    actor: UserResponseDto,
+    id: string,
+    updateUserDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
     const user = await this.findVisibleUserOrThrow(actor, id);
 
     if (actor.id !== user.id && actor.role === UserRole.USER) {
       throw new ForbiddenException(
-          'You cannot update a user with a higher role',
+        'You cannot update a user with a higher role',
       );
     }
 
     if (
-        updateUserDto.email &&
-        updateUserDto.email.trim().toLowerCase() !== user.email
+      updateUserDto.email &&
+      updateUserDto.email.trim().toLowerCase() !== user.email
     ) {
       await this.ensureUniqueFields(updateUserDto.email, undefined, user.id);
       user.email = updateUserDto.email.trim().toLowerCase();
     }
 
     if (
-        updateUserDto.username &&
-        updateUserDto.username.trim() !== user.username
+      updateUserDto.username &&
+      updateUserDto.username.trim() !== user.username
     ) {
       await this.ensureUniqueFields(undefined, updateUserDto.username, user.id);
       user.username = updateUserDto.username.trim();
@@ -242,17 +292,19 @@ export class UsersService {
     if (updateUserDto.password) {
       user.password = await this.passwordService.hash(updateUserDto.password);
     }
-    
+
     try {
       const updatedUser = await this.usersRepository.save(user);
       await this.cacheService.delByPattern('users:list:*');
       return this.toResponse(updatedUser);
     } catch (e) {
-     this.logger.error(
-         `Failed to update user with ID ${user.id}`,
-         e instanceof Error ? e.stack : String(e)
-     );
-     throw new InternalServerErrorException(`Failed to update user with ID ${user.id}`);
+      this.logger.error(
+        `Failed to update user with ID ${user.id}`,
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException(
+        `Failed to update user with ID ${user.id}`,
+      );
     }
   }
 
@@ -264,13 +316,15 @@ export class UsersService {
     const user = await this.findActiveUserById(id);
     try {
       await this.usersRepository.softDelete({ id: user.id });
-      await this.cacheService.delByPattern('users:list:*');  
+      await this.cacheService.delByPattern('users:list:*');
     } catch (e) {
       this.logger.error(
-          `Failed to delete user with ID ${user.id}`,
-          e instanceof Error ? e.stack : String(e)
+        `Failed to delete user with ID ${user.id}`,
+        e instanceof Error ? e.stack : String(e),
       );
-      throw new InternalServerErrorException(`Failed to delete user with ID ${user.id}`);
+      throw new InternalServerErrorException(
+        `Failed to delete user with ID ${user.id}`,
+      );
     }
   }
 
@@ -301,13 +355,16 @@ export class UsersService {
     };
   }
 
-  private async createUserRecord(input: {
-    email: string;
-    username: string;
-    fullname: string;
-    password?: string;
-    role: UserRole;
-  }): Promise<UserResponseDto> {
+  private async createUserRecord(
+    input: {
+      email: string;
+      username: string;
+      fullname: string;
+      password?: string;
+      role: UserRole;
+    },
+    failureMessage = 'Failed to create user',
+  ): Promise<UserResponseDto> {
     await this.ensureUniqueFields(input.email, input.username);
 
     const user = this.usersRepository.create({
@@ -319,23 +376,43 @@ export class UsersService {
       password: await this.passwordService.hash(input.password as string),
     });
 
-    const savedUser = await this.usersRepository.save(user);
+    let savedUser: User;
+    try {
+      savedUser = await this.usersRepository.save(user);
+    } catch (e) {
+      this.logger.error(
+        failureMessage,
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException(failureMessage);
+    }
     return this.toResponse(savedUser);
   }
 
   private async ensureUniqueFields(
-      email?: string,
-      username?: string,
-      excludeUserId?: string,
+    email?: string,
+    username?: string,
+    excludeUserId?: string,
   ): Promise<void> {
     if (email) {
-      const existingEmailUser = await this.usersRepository
+      let existingEmailUser: User | null;
+      try {
+        existingEmailUser = await this.usersRepository
           .createQueryBuilder('user')
           .where('LOWER(user.email) = LOWER(:email)', { email })
           .andWhere(excludeUserId ? 'user.id != :excludeUserId' : '1=1', {
             excludeUserId,
           })
           .getOne();
+      } catch (e) {
+        this.logger.error(
+          'Failed to validate user email uniqueness',
+          e instanceof Error ? e.stack : String(e),
+        );
+        throw new InternalServerErrorException(
+          'Failed to validate user email uniqueness',
+        );
+      }
 
       if (existingEmailUser) {
         throw new ConflictException('Email is already in use');
@@ -343,13 +420,24 @@ export class UsersService {
     }
 
     if (username) {
-      const existingUsernameUser = await this.usersRepository
+      let existingUsernameUser: User | null;
+      try {
+        existingUsernameUser = await this.usersRepository
           .createQueryBuilder('user')
           .where('LOWER(user.username) = LOWER(:username)', { username })
           .andWhere(excludeUserId ? 'user.id != :excludeUserId' : '1=1', {
             excludeUserId,
           })
           .getOne();
+      } catch (e) {
+        this.logger.error(
+          'Failed to validate username uniqueness',
+          e instanceof Error ? e.stack : String(e),
+        );
+        throw new InternalServerErrorException(
+          'Failed to validate username uniqueness',
+        );
+      }
 
       if (existingUsernameUser) {
         throw new ConflictException('Username is already in use');
@@ -358,29 +446,41 @@ export class UsersService {
   }
 
   private resolveCreateRole(
-      actor: UserResponseDto,
-      requestedRole: UserRole,
+    actor: UserResponseDto,
+    requestedRole: UserRole,
   ): UserRole {
+    if (requestedRole === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'super_admin can only be created manually through the database',
+      );
+    }
+
     if (actor.role === UserRole.SUPER_ADMIN) {
       return requestedRole;
     }
 
-    if (actor.role === UserRole.ADMIN && requestedRole != UserRole.SUPER_ADMIN) {
-      return requestedRole;
+    if (actor.role === UserRole.ADMIN) {
+      return UserRole.USER;
     }
 
     throw new ForbiddenException('You do not have permission to create users');
   }
 
   private resolveUpdateRole(
-      actor: UserResponseDto,
-      requestedRole: UserRole,
+    actor: UserResponseDto,
+    requestedRole: UserRole,
   ): UserRole {
+    if (requestedRole === UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'super_admin can only be created manually through the database',
+      );
+    }
+
     if (actor.role === UserRole.SUPER_ADMIN) {
       return requestedRole;
     }
 
-    if (actor.role === UserRole.ADMIN && requestedRole != UserRole.SUPER_ADMIN) {
+    if (actor.role === UserRole.ADMIN && requestedRole === UserRole.USER) {
       return requestedRole;
     }
 
@@ -388,16 +488,27 @@ export class UsersService {
   }
 
   private async findVisibleUserOrThrow(
-      actor: UserResponseDto,
-      id: string,
+    actor: UserResponseDto,
+    id: string,
   ): Promise<User> {
     const visibleRoles = this.getVisibleRoles(actor.role);
-    const user = await this.usersRepository.findOne({
-      where: {
-        id,
-        role: In(visibleRoles),
-      },
-    });
+    let user: User | null;
+    try {
+      user = await this.usersRepository.findOne({
+        where: {
+          id,
+          role: In(visibleRoles),
+        },
+      });
+    } catch (e) {
+      this.logger.error(
+        `Failed to fetch visible user with ID ${id}`,
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException(
+        `Failed to fetch visible user with ID ${id}`,
+      );
+    }
 
     if (!user) {
       throw new NotFoundException('User not found');
