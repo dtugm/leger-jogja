@@ -152,8 +152,12 @@ export class SourceFileService {
         await queryRunner.connect();
         await queryRunner.startTransaction();
 
+        const file = updateDto?.file;
+        if (!file) throw new BadRequestException('File is required!');
+
         let outputPath: string | null = null;
-        let updatedSrcFile: SourceFile | undefined;
+        let uploadedFile: UploadFileResult | null = null;
+        let prevFileUrl: string | null = null;
 
         try {
             const srcFile = await queryRunner.manager.findOne(
@@ -167,18 +171,31 @@ export class SourceFileService {
             );
             if (!srcFile) throw new NotFoundException('Source File Not Found');
 
+            // set prev url value 
+            prevFileUrl = srcFile.url ?? '';
+
+            // set key then upload file
+            const key = `gml/${randomUUID()}${getExt(file?.originalname)}`
+            uploadedFile = await this.storageService.uploadFile(
+                key,
+                file?.buffer,
+                file?.mimetype,
+                file?.size
+            )
+
             // update source file data
             srcFile.filename = file.originalname;
             srcFile.uploadedBy = updateDto?.uploadedBy;
-            updatedSrcFile = await queryRunner.manager.save(SourceFile, srcFile);
+            if (uploadedFile?.url) srcFile.url = uploadedFile?.url;
+            const updatedSrcFile = await queryRunner.manager.save(SourceFile, srcFile);
 
             // Add 'asset id' and 'source file id' to gml data
             const addAttributeParams: AddAttributeToGML = {
                 assetId: assetId,
                 sourceFileId: srcFile.id,
                 filepath: file.path,
-                validFrom: updateDto.validFrom,
-                validTo: updateDto.validTo,
+                validFrom: updateDto.validFrom ?? '',
+                validTo: updateDto.validTo ?? '',
             }
             outputPath = await this.gmlService.addAttributeToGml(addAttributeParams)
 
@@ -186,7 +203,7 @@ export class SourceFileService {
             const importParams: ImportFileOptions = {
                 inputFile: outputPath,
                 importer: updateDto?.uploadedBy?.fullname,
-                importMode: ImportMode.TERMINATE
+                importMode: updateDto.importMode
             }
             await this.cityDbToolService.importCityGml(importParams)
 
@@ -199,8 +216,15 @@ export class SourceFileService {
                     WHERE "id" = $2
                 `, [point.location, assetId])
             }
+
             // commit transaction
             await queryRunner.commitTransaction();
+
+            // remove prev file from storage service
+            if (prevFileUrl) {
+                const prefix = getPrefix(prevFileUrl, false);
+                await this.storageService.deleteFile(prefix);
+            }
 
             await this.invalidateAssetCaches(assetId);
             return updatedSrcFile!;
@@ -208,6 +232,11 @@ export class SourceFileService {
         } catch (err) {
             this.logger.error(err);
             await queryRunner.rollbackTransaction();
+
+            if (uploadedFile?.url) {
+                const prefix = getPrefix(uploadedFile.url, false);
+                await this.storageService.deleteFile(prefix);
+            }
 
             if (err instanceof NotFoundException) {
                 throw err;
