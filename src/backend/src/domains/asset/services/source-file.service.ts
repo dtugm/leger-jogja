@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { SourceFile } from '../entities/source-file.entity';
 import { AddSourceFileDto } from '../dto/add-source-file.dto';
@@ -13,6 +13,10 @@ import { ImportMode } from 'src/domains/citydb-tool/enums/import-mode.enum';
 import { UpdateSourceFileDto } from '../dto/update-source-file.dto';
 import { CitydbQueryService } from 'src/domains/citydb-tool/services/citydb-query.service';
 import { CacheService } from 'src/cache/cache.service';
+import { StorageService } from 'src/domains/storage/services/storage.service';
+import { getExt, getPrefix } from 'src/common/common';
+import { randomUUID } from 'crypto';
+import { UploadFileResult } from 'src/domains/storage/interfaces/upload-file-result.interface';
 
 @Injectable()
 export class SourceFileService {
@@ -25,6 +29,7 @@ export class SourceFileService {
         private readonly gmlService: GmlService,
         private readonly assetService: AssetService,
         private readonly cacheService: CacheService,
+        private readonly storageService: StorageService,
         private dataSource: DataSource,
     ) { }
 
@@ -35,16 +40,31 @@ export class SourceFileService {
 
         let outputPath: string | null = null;
         let sourceFile: SourceFile | null = null;
-        let response: { message: string, data: SourceFile } | undefined;
+        let uploadedFile: UploadFileResult | null = null;
 
         try {
+            if (!createDto.file) throw new BadRequestException('File is required!');
+
+            // Upload file to cloud storage
+            this.logger.log('start uploading file')
+            const key = `gml/${randomUUID()}${getExt(createDto.file?.originalname)}`
+            const stream = fs.createReadStream(createDto.file.path);
+            uploadedFile = await this.storageService.uploadFile(
+                key,
+                stream,
+                createDto.file?.mimetype,
+                createDto.file?.size
+            )
+            this.logger.log('upload works')
+
             // save source file data to the database
             sourceFile = await queryRunner.manager.save(
                 SourceFile,
                 {
                     filename: createDto.file?.originalname,
                     uploadedBy: createDto.uploadedBy,
-                    asset: { id: createDto.assetId }
+                    asset: { id: createDto.assetId },
+                    url: uploadedFile.url
                 } as SourceFile
             );
 
@@ -78,7 +98,7 @@ export class SourceFileService {
 
             // commit transaction
             await queryRunner.commitTransaction();
-            
+
             await this.invalidateAssetCaches(createDto.assetId);
             return {
                 message: "Successfully imported the file",
@@ -86,6 +106,12 @@ export class SourceFileService {
             };
         } catch (err) {
             this.logger.error(err);
+
+            if (uploadedFile?.url) {
+                const prefix = getPrefix(uploadedFile.url, false);
+                await this.storageService.deleteFile(prefix);
+            }
+
             if (sourceFile) {
                 try {
                     const feature = await this.cityDbQueryService.findFeatureByFileId(
@@ -127,7 +153,6 @@ export class SourceFileService {
         await queryRunner.startTransaction();
 
         let outputPath: string | null = null;
-        const file = updateDto?.file!;
         let updatedSrcFile: SourceFile | undefined;
 
         try {
@@ -204,10 +229,8 @@ export class SourceFileService {
             const key = await this.cacheService.generateKey('assets', assetId);
             const cached = await this.cacheService.get<SourceFile[]>(key);
             if (cached) return cached;
-    
             // make sure that the asset exist
             await this.assetService.findOne(assetId);
-    
             const res = await this.sourceFileRepository.find({
                 where: {
                     asset: { id: assetId }

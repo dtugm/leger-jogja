@@ -57,11 +57,11 @@ export class Tiles3dService {
             }
             const tiles3d = await queryRunner.manager.save(Tiles3D, upsertData);
 
+            await queryRunner.commitTransaction();
+            
             if (fileUrl && prevTiles3d?.url) {
                 await this.storageService.deleteFolder(prevTiles3d?.url);
             }
-
-            await queryRunner.commitTransaction();
 
             return await this.findOne(tiles3d.id);
         } catch (error) {
