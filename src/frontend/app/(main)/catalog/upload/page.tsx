@@ -92,7 +92,7 @@ return (
     )}
 
     {pageState === "form" && (
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-10rem)] sm:max-h-[calc(100vh-12rem)]">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
         <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start">
             <div className="w-full lg:w-1/3 shrink-0 flex flex-col gap-5">
                 <UploadFileTable

@@ -23,7 +23,12 @@ export default function CatalogClient({ assets }: { assets: Asset[] }) {
 
   return (
     <>
-      <StatCards totalAssets={filtered.length} good={good} fair={fair} poor={poor} />
+      <StatCards stats={[
+        { value: filtered.length, label: "Total Assets", color: "blue" },
+        { value: good,            label: "Good",         color: "green" },
+        { value: fair,            label: "Fair",         color: "yellow" },
+        { value: poor,            label: "Poor",         color: "red" },
+      ]} />
 
       <div className="mb-5 flex flex-col sm:flex-row items-strech sm:items-center gap-2 sm:gap-3">
         <SearchInput
