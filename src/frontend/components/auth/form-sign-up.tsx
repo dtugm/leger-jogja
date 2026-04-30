@@ -26,10 +26,37 @@ export default function FormSignUp() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <FormField label="Full Name" registration={register("fullName")} error={errors.fullName?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
-        <FormField label="Username" registration={register("username")} error={errors.username?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
-        <FormField label="Email" type="email" registration={register("email")} error={errors.email?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
-        <FormField label="Password" type="password" registration={register("password")} error={errors.password?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400" />
+        <FormField 
+          label="Full Name" 
+          placeholder="e.g. Andi Prasetyo"
+          registration={register("fullName")} 
+          error={errors.fullName?.message} 
+          labelClassName="text-gray-700" 
+          inputClassName="bg-white border-gray-200 text-gray-900 
+          placeholder:text-gray-400"/>
+        <FormField 
+          label="Username" 
+          placeholder="e.g. andipr"
+          registration={register("username")} 
+          error={errors.username?.message} 
+          labelClassName="text-gray-700" 
+          inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
+        <FormField 
+          label="Email" 
+          type="email"
+          placeholder="e.g. andipr@email.com"
+          registration={register("email")} 
+          error={errors.email?.message} 
+          labelClassName="text-gray-700" 
+          inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
+        <FormField 
+          label="Password" 
+          type="password"
+          placeholder="e.g. @Y0UrP4s5w0rD"
+          registration={register("password")} 
+          error={errors.password?.message} 
+          labelClassName="text-gray-700" 
+          inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400" />
         <Button variant="primary" size="md" text="Sign Up" fullW disabled={isSubmitting}/>
       </form>
 
