@@ -258,16 +258,36 @@ export class SourceFileService {
             const key = await this.cacheService.generateKey('assets', assetId);
             const cached = await this.cacheService.get<SourceFile[]>(key);
             if (cached) return cached;
+
             // make sure that the asset exist
             await this.assetService.findOne(assetId);
-            const res = await this.sourceFileRepository.find({
+
+            const sourceFiles = await this.sourceFileRepository.find({
                 where: {
                     asset: { id: assetId }
                 }
             })
-            await this.cacheService.set(key, res);
-    
-            return res
+
+            // count total feature type per each source_file_id based on asset id
+            const features = await this.cityDbQueryService.countFeaturesByAssetId(assetId)
+            // Combine sourceFiles with features
+            const response = sourceFiles.map(srcFile => {
+                const mappedFeatures = features
+                    .filter(feature => feature.id == srcFile.id)
+                    .map(feature => ({
+                        featureType: feature.feature_type,
+                        total: feature.total
+                    }));
+
+                return {
+                    ...srcFile,
+                    features: mappedFeatures
+                }
+            })
+
+            await this.cacheService.set(key, response);
+
+            return response;
         } catch (error) {
             this.logger.error(error);
             throw new InternalServerErrorException(`Failed to fetch source files by asset id : ${assetId}`)
