@@ -48,7 +48,11 @@ import { LogActivityModule } from './domains/log-activity/log-activity.module';
   ],
   controllers: [AppController],
   providers: [
-    AppService
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LogActivityInterceptor,
+    },
   ],
 })
 export class AppModule {}
