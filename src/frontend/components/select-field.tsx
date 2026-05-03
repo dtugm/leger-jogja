@@ -1,7 +1,11 @@
 "use client";
 
+<<<<<<< HEAD
 import { Check, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+=======
+import { ChevronDown } from "lucide-react";
+>>>>>>> 0af0e46bb0863ad3864c1db7b9077dedffe34d19
 
 interface SelectOption {
   value: string;
@@ -15,8 +19,11 @@ interface SelectFieldProps {
   options: SelectOption[];
   placeholder?: string;
   error?: string;
+<<<<<<< HEAD
   disabled?: boolean;
   required?: boolean;
+=======
+>>>>>>> 0af0e46bb0863ad3864c1db7b9077dedffe34d19
   className?: string;
 }
 
@@ -27,6 +34,7 @@ export default function SelectField({
   options,
   placeholder = "Select...",
   error,
+<<<<<<< HEAD
   disabled = false,
   required = false,
   className = "",
@@ -149,6 +157,36 @@ export default function SelectField({
         )}
       </div>
 
+=======
+  className = "",
+}: SelectFieldProps) {
+  return (
+    <div className={`flex flex-col gap-1 ${className}`}>
+      {label && (
+        <label className="text-sm font-medium text-foreground">{label}</label>
+      )}
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`
+            w-full appearance-none rounded-lg border border-border bg-background px-3 py-2.5 pr-9 text-sm text-foreground transition-colors
+            focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-500/20
+            ${!value ? "text-muted-foreground" : ""}
+          `}
+        >
+          {placeholder && (
+            <option value="" disabled>{placeholder}</option>
+          )}
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      </div>
+>>>>>>> 0af0e46bb0863ad3864c1db7b9077dedffe34d19
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
