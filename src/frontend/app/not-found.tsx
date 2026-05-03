@@ -25,7 +25,7 @@ export default function NotFound() {
                 <span className="text-[10rem] font-bold text-primary-800">4</span>
             </div>
             
-            <p className="text-sm text-gray-500 text-center max-w-xs">
+            <p className="text-sm text-muted-foreground text-center max-w-xs">
                 We&apos;re sorry, the page you requested could not be found. Please go back to the homepage.
             </p>
 
