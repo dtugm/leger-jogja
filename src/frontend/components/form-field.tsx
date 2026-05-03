@@ -1,25 +1,33 @@
 import { InputHTMLAttributes } from "react";
 import { UseFormRegisterReturn } from "react-hook-form";
 
+import { Input } from "@/components/ui/input";
+
 interface FormFieldProps {
     label: string;
     type?: InputHTMLAttributes<HTMLInputElement>["type"];
     placeholder?: string;
     error?: string;
-    registration: UseFormRegisterReturn;
+    registration?: UseFormRegisterReturn;
+    value?: string;
+    inputClassName?: string;
+    labelClassName?: string;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export default function FormField({ label, type = "text", placeholder, error, registration }: FormFieldProps) {
+export default function FormField({ label, type = "text", placeholder, error, registration, value, inputClassName, labelClassName, onChange }: FormFieldProps) {
     return (
     <div className="space-y-1">
-        <label className="text-sm font-medium text-gray-800">{label}</label>
-        <input
+        <label className={`text-sm font-medium ${labelClassName ?? "text-foreground"}`}>{label}</label>
+        <Input
             {...registration}
+            className={inputClassName}
+            value={value}
+            onChange={onChange}
             type={type}
             placeholder={placeholder ?? label}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-1 focus:ring-primary-500"
         />
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
     );
 }

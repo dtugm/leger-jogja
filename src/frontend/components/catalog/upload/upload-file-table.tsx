@@ -55,8 +55,8 @@ return (
                 <td className="px-3 py-2.5 text-muted-foreground text-xs">
                   {String(i + 1).padStart(2, "0")}
                 </td>
-                <td className="px-3 py-2.5 text-foreground max-w-30 sm:max-w-none truncate">
-                  {file.name}
+                <td className="px-3 py-2.5 text-foreground w-40 sm:w-auto max-w-0">
+                  <span className="block truncate">{file.name}</span>
                 </td>
                 <td className="px-3 py-2.5 text-muted-foreground text-xs">{file.size}</td>
                 <td className="px-3 py-2.5">

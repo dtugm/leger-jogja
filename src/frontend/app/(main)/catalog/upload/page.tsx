@@ -30,12 +30,20 @@ const router = useRouter();
 
 const handleAddMore = () => fileInputRef.current?.click();
 
+const ALLOWED = [".json", ".geojson", ".kml", ".gml", ".shp", ".csv", ".glb", ".ifc", ".obj"];
+
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
-    const newFiles: UploadedFile[] = picked.map((f) => ({
-    id:   Date.now() + f.name,
-    name: f.name.replace(/\.[^.]+$/, ""),
-    size: `${(f.size / 1024 / 1024).toFixed(2)}MiB`,
+    const valid = picked.filter(f =>
+        ALLOWED.some(ext => f.name.toLowerCase().endsWith(ext))
+    );
+    const invalid = picked.length - valid.length;
+    if (invalid > 0) alert(`${invalid} file tidak didukung dan diabaikan`);
+    
+    const newFiles: UploadedFile[] = valid.map((f) => ({
+        id:   Date.now() + f.name,
+        name: f.name.replace(/\.[^.]+$/, ""),
+        size: `${(f.size / 1024 / 1024).toFixed(2)}MiB`,
     }));
     const next = [...files, ...newFiles];
     setFiles(next);
