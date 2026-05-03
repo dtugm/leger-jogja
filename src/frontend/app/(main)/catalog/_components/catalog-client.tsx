@@ -24,8 +24,8 @@ export default function CatalogClient({ assets }: { assets: Asset[] }) {
   return (
     <>
       <StatCards stats={[
-        { value: filtered.length, label: "Total Assets", color: "blue" },
-        { value: good,            label: "Good",         color: "green" },
+        { value: filtered.length, label: "Total Assets", color: "green" },
+        { value: good,            label: "Good",         color: "blue" },
         { value: fair,            label: "Fair",         color: "yellow" },
         { value: poor,            label: "Poor",         color: "red" },
       ]} />
