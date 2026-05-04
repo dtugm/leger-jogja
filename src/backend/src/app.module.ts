@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { LogActivityInterceptor } from './common/interceptors/log-activity.interceptor';
 import { CitydbToolModule } from './domains/citydb-tool/citydb-tool.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './db/database.module';
@@ -15,6 +17,7 @@ import { CacheModule } from './cache/cache.module';
 import { ToolModule } from './tool/tool.module';
 import { StorageModule } from './domains/storage/storage.module';
 import { Tiles3dModule } from './domains/tiles3d/tiles3d.module';
+import { LogActivityModule } from './domains/log-activity/log-activity.module';
 
 @Module({
   imports: [
@@ -41,8 +44,15 @@ import { Tiles3dModule } from './domains/tiles3d/tiles3d.module';
     ToolModule,
     StorageModule,
     Tiles3dModule,
+    LogActivityModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LogActivityInterceptor,
+    },
+  ],
 })
 export class AppModule {}
