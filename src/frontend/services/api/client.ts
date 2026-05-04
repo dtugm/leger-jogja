@@ -62,7 +62,8 @@ async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     AuthTokenService.removeToken();
     // Optionally redirect to login — can be customised later
     if (typeof window !== "undefined") {
-      window.location.href = "/login";
+      document.cookie = "token=; path=/; max-age=0";
+      window.location.href = "auth/login";
     }
   }
 

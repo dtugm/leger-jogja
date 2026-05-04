@@ -34,6 +34,16 @@ export default function UploadForm({ initialData, onCancel, onUpload }: UploadFo
 
 const [errors, setErrors] = useState<Partial<Record<keyof UploadFormData, string>>>({});
 
+const [form, setForm] = useState<UploadFormData>({
+  assetName:   initialData?.assetName   ?? "",
+  description: initialData?.description ?? "",
+  totalLength: initialData?.totalLength ?? "",
+  width:       initialData?.width       ?? "",
+  materials:   initialData?.materials   ?? [],
+  yearBuilt:   initialData?.yearBuilt   ?? "",
+  buildBy:     initialData?.buildBy     ?? "",
+});
+
 const validate = () => {
   const newErrors: Partial<Record<keyof UploadFormData, string>> = {};
   if (!form.assetName.trim())   newErrors.assetName   = "Asset name is required";
@@ -58,15 +68,7 @@ const handleSubmit = () => {
   onUpload(form);
 };
 
-  const [form, setForm] = useState<UploadFormData>({
-    assetName:   initialData?.assetName   ?? "",
-    description: initialData?.description ?? "",
-    totalLength: initialData?.totalLength ?? "",
-    width:       initialData?.width       ?? "",
-    materials:   initialData?.materials   ?? [],
-    yearBuilt:   initialData?.yearBuilt   ?? "",
-    buildBy:     initialData?.buildBy     ?? "",
-  });
+
 
   const set = (key: keyof UploadFormData) => (value: string | string[]) => {
     setForm((prev) => ({ ...prev, [key]: value }));

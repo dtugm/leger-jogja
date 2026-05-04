@@ -18,7 +18,7 @@ interface FormFieldProps {
 export default function FormField({ label, type = "text", placeholder, error, registration, value, inputClassName, labelClassName, onChange }: FormFieldProps) {
     return (
     <div className="space-y-1">
-        <label className={`text-sm font-medium ${labelClassName} ?? "text-foreground"`}>{label}</label>
+        <label className={`text-sm font-medium ${labelClassName ?? "text-foreground"}`}>{label}</label>
         <Input
             {...registration}
             className={inputClassName}

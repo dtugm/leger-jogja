@@ -3,7 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef } from "react";
+import { Controller, useForm } from "react-hook-form";
 
 import { useApiHandler } from "@/hooks/use-api-handler";
 import { type SignInFormData, signInSchema } from "@/lib/validations/auth";
@@ -15,16 +16,20 @@ import FormField from "../form-field";
 
 export default function FormSignIn() {
   const router = useRouter();
-  const { execute, isLoading } = useApiHandler();
+  const { execute } = useApiHandler();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const {
-    register,
+    control,
     handleSubmit,
-    formState: { errors },
+    setValue,
+    formState: { errors, isSubmitting},
   } = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
+    mode: "onChange",
   });
+
+  const formRef = useRef<HTMLFormElement>(null);
 
   const onSubmit = async (data: SignInFormData) => {
     const res = await execute({
@@ -38,9 +43,21 @@ export default function FormSignIn() {
 
     if (res.success && res.data) {
       await setAuth(res.data.user, res.data.token);
-      router.push("/dashboard");
+      router.push("/catalog");
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const form = formRef.current;
+      if (!form) return;
+      const email = (form.querySelector('input[type="email"]') as HTMLInputElement)?.value;
+      const password = (form.querySelector('input[type="password"]') as HTMLInputElement)?.value;
+      if (email) setValue("email", email);
+      if (password) setValue("password", password);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [setValue]);
 
   return (
     <>
@@ -49,9 +66,39 @@ export default function FormSignIn() {
         <p className="text-sm text-muted-foreground">Sign in to explore the app</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <FormField label="Email" type="email" registration={register("email")} error={errors.email?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
-        <FormField label="Password" type="password" registration={register("password")} error={errors.password?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
+      <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <Controller
+          name="email"
+          control={control}
+          render={({ field }) => (
+            <FormField 
+              label="Email" 
+              type="email"
+              placeholder="e.g. yourname@email.com"
+              value={field.value ?? ""} 
+              onChange={field.onChange}
+              error={errors.email?.message} 
+          labelClassName="text-gray-700" 
+          inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+        />
+          )}
+        />
+        <Controller 
+          name="password"
+          control={control}
+          render={({ field }) => (       
+          <FormField 
+            label="Password"
+            type="password"
+            placeholder="e.g. @Y0UrP4s5w0rD"
+            value={field.value ?? ""} 
+            onChange={field.onChange}
+            error={errors.password?.message} 
+            labelClassName="text-gray-700" 
+            inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+          />
+          )}
+        />
         <Button variant="primary" size="md" text="Sign In" fullW disabled={isSubmitting} />
       </form>
 

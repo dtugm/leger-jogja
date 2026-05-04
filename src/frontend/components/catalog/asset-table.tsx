@@ -2,8 +2,8 @@
 
 import { Calendar, MapPin, Ruler } from "lucide-react";
 
+// Anchor, Milestone
 import Table, { ColumnDef } from "@/components/table";
-
 export type Condition = "Good" | "Fair" | "Poor";
 export type AssetType = "Road" | "Bridge";
 
@@ -22,6 +22,11 @@ const conditionDot: Record<Condition, string> = {
   Fair: "bg-[var(--color-warning)]",
   Poor: "bg-[var(--color-danger)]",
 };
+
+// const typeIcon: Record<AssetType, React.ReactNode> = {
+//   Road:   <Milestone className="h-4 w-4 text-muted-foreground" />,
+//   Bridge: <Anchor    className="h-4 w-4 text-muted-foreground" />,
+// };
 
 function buildColumns(assets: Asset[]): ColumnDef<Asset>[] {
   const locations = [...new Set(assets.map((a) => a.location))].sort();
@@ -48,7 +53,7 @@ function buildColumns(assets: Asset[]): ColumnDef<Asset>[] {
       label: "Type",
       filterOptions: ["Road", "Bridge"],
       render: (row) => (
-        <span className="inline-block rounded border border-border px-2 py-0.5 text-xs text-foreground">
+        <span className="inline-block rounded-full bg-muted px-3 py-0.5 text-xs font-medium text-foreground">
           {row.type}
         </span>
       ),
