@@ -7,12 +7,14 @@ import { SourceFileService } from './services/source-file.service';
 import { SourceFile } from './entities/source-file.entity';
 import { CitydbToolModule } from '../citydb-tool/citydb-tool.module';
 import { ToolModule } from 'src/tool/tool.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Asset, SourceFile]),
     CitydbToolModule, 
-    ToolModule
+    ToolModule,
+    StorageModule
   ],
   controllers: [AssetController],
   providers: [AssetService, SourceFileService]
