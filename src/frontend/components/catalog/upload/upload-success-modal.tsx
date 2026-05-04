@@ -32,14 +32,12 @@ export default function UploadSuccessModal({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="w-[calc(100vw-2rem)]max-w-sm rounded-2xl p-5 sm:p-8">
 
-        {/* Success icon */}
         <div className="flex justify-center mb-5">
           <div className="flex  h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border-2 border-success/30 bg-success/10">
             <Check className="h-6 w-6 sm:h-7 sm:w-7 text-(--color-success) stroke-[2.5]" />
           </div>
         </div>
 
-        {/* Title */}
         <DialogHeader className="text-center mb-6">
           <DialogTitle className="text-base font-semibold text-foreground">
             {assetName} <span className="text-muted-foreground">Saved.</span>
@@ -49,7 +47,6 @@ export default function UploadSuccessModal({
           </p>
         </DialogHeader>
 
-        {/* Schedule section */}
         <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
           <div>
             <p className="text-sm font-semibold text-foreground">Schedule first inspection</p>
@@ -79,7 +76,6 @@ export default function UploadSuccessModal({
           </div>
         </div>
 
-        {/* Skip link */}
         <div className="mt-4 text-center">
           <button
             type="button"

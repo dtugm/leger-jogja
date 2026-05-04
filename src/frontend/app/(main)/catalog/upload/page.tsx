@@ -30,12 +30,20 @@ const router = useRouter();
 
 const handleAddMore = () => fileInputRef.current?.click();
 
+const ALLOWED = [".json", ".geojson", ".kml", ".gml", ".shp", ".csv", ".glb", ".ifc", ".obj"];
+
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
-    const newFiles: UploadedFile[] = picked.map((f) => ({
-    id:   Date.now() + f.name,
-    name: f.name.replace(/\.[^.]+$/, ""),
-    size: `${(f.size / 1024 / 1024).toFixed(2)}MiB`,
+    const valid = picked.filter(f =>
+        ALLOWED.some(ext => f.name.toLowerCase().endsWith(ext))
+    );
+    const invalid = picked.length - valid.length;
+    if (invalid > 0) alert(`${invalid} file tidak didukung dan diabaikan`);
+    
+    const newFiles: UploadedFile[] = valid.map((f) => ({
+        id:   Date.now() + f.name,
+        name: f.name.replace(/\.[^.]+$/, ""),
+        size: `${(f.size / 1024 / 1024).toFixed(2)}MiB`,
     }));
     const next = [...files, ...newFiles];
     setFiles(next);
@@ -92,7 +100,7 @@ return (
     )}
 
     {pageState === "form" && (
-        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-10rem)] sm:max-h-[calc(100vh-12rem)]">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
         <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start">
             <div className="w-full lg:w-1/3 shrink-0 flex flex-col gap-5">
                 <UploadFileTable
