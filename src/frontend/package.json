@@ -5,7 +5,7 @@
   "scripts": {
     "copy-cesium": "npx cpx2 \"node_modules/cesium/Build/Cesium/**/*\" public/cesium",
     "dev": "npm run copy-cesium && next dev --webpack",
-    "build": "npm run copy-cesium && next build",
+    "build": "npm run copy-cesium && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",

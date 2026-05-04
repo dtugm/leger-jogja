@@ -1,10 +1,10 @@
-// components/auth/auth-illustration.tsx
 import AuthIllustration from "@/public/assets/auth/auth-illustration.svg";
 
 export default function AuthIllustrationAnimated() {
   return (
     <>
-      <style>{`
+    <div className="w-full flex items-center justify-center overflow-visible">
+        <style>{`
         #elemen-pesawat {
             animation: float 3s ease-in-out infinite;
             transform-origin: center;
@@ -32,7 +32,8 @@ export default function AuthIllustrationAnimated() {
         }
       `}</style>
 
-        <AuthIllustration className="w-full max-w-xl" />
+        <AuthIllustration className="w-full overflow-visible" />
+    </div>
     </>
   );
 }
