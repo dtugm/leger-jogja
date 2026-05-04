@@ -15,6 +15,7 @@ import { CurrentUser } from 'src/domains/auth/decorators/current-user.decorator'
 import { AddSourceFileDto } from '../dto/add-source-file.dto';
 import { SourceFileService } from '../services/source-file.service';
 import { UpdateSourceFileDto } from '../dto/update-source-file.dto';
+import { ImportMode } from 'src/domains/citydb-tool/enums/import-mode.enum';
 
 @ApiTags('Assets')
 @ApiBearerAuth()
@@ -166,6 +167,11 @@ export class AssetController {
           type: 'string',
           format: 'date-time',
           nullable: true
+        },
+        importMode: {
+          type: 'string',
+          enum: Object.values(ImportMode),
+          default: ImportMode.TERMINATE
         },
         file: {
           type: 'string',
