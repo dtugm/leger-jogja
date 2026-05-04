@@ -2,20 +2,28 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 
+import { useApiHandler } from "@/hooks/use-api-handler";
 import { type ResetPasswordFormData, resetPasswordSchema } from "@/lib/validations/auth";
+import { AuthApi } from "@/services/api/auth.api";
 
 import Button from "../button";
 import FormField from "../form-field";
 
 export default function FormForgotPassword() {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ResetPasswordFormData>({
+  const { control, handleSubmit, formState: { errors } } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
+     mode: "onChange",
   });
 
+  const { execute, isLoading } = useApiHandler();
+
   const onSubmit = async (data: ResetPasswordFormData) => {
-    console.warn("forgot password", data);
+    await execute({
+      request: () => AuthApi.forgotPassword(data.email),
+      successMessage: "Reset link sent! Check your email.",
+    });
   };
 
   return (
@@ -26,16 +34,23 @@ export default function FormForgotPassword() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <FormField 
-          label="Email" 
-          type="email"
-          placeholder="e.g andipr@gmail.com" 
-          registration={register("email")} 
-          error={errors.email?.message} 
-          labelClassName="text-gray-700" 
-          inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+        <Controller
+          name="email"
+          control={control}
+          render={({ field }) => (
+            <FormField 
+              label="Email" 
+              type="email"
+              placeholder="e.g andipr@gmail.com" 
+              value={field.value ?? ""} 
+              onChange={field.onChange}
+              error={errors.email?.message} 
+              labelClassName="text-gray-700" 
+              inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+            />
+          )}
         />
-        <Button variant="primary" size="md" text="Send reset link" fullW disabled={isSubmitting} />
+        <Button variant="primary" size="md" text="Send reset link" fullW disabled={isLoading} />
       </form>
 
       <p className="text-center text-sm text-muted-foreground">

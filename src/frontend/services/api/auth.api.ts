@@ -18,4 +18,12 @@ export const AuthApi = {
   refresh: async () => {
     return ApiPostData<null>(`${mainPath}/refresh`);
   },
+
+  forgotPassword: async (email: string) => {
+    return ApiPostData<null>(`${mainPath}/forgot-password`, { email });
+  },
+
+  resetPassword: async (token: string, newPassword: string) => {
+    return ApiPostData<null>(`${mainPath}/reset-password`, { token, newPassword });
+  },
 };

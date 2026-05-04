@@ -15,3 +15,12 @@ export interface IRegisterPayload {
   fullname: string;
   password: string;
 }
+
+export interface IForgotPasswordPayload {
+  email: string;
+}
+
+export interface IResetPasswordPayload {
+  token: string;
+  newPassword: string;
+}
