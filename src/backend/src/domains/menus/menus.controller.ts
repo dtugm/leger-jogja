@@ -25,7 +25,6 @@ import { UserResponseDto } from '../users/dto/user-response.dto';
 import { UserRole } from '../users/entities/user.entity';
 import { PagedResponseDto } from 'src/common/dto/paged-response.dto';
 import { MenusService } from './menus.service';
-import { MenuAdminTreeResponseDto } from './dto/menu-admin-tree-response.dto';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { ListMenusQueryDto } from './dto/list-menus-query.dto';
 import { MenuResponseDto } from './dto/menu-response.dto';
@@ -51,20 +50,20 @@ export class MenusController {
   @Get()
   @UseGuards(RolesGuard)
   @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'List all menus as a tree with full details' })
+  @ApiOperation({ summary: 'List all menus as a flat list with full details' })
   @ApiResponse({
     status: HttpStatus.OK,
-    type: MenuAdminTreeResponseDto,
+    type: MenuResponseDto,
     isArray: true,
   })
   findAllForSuperAdmin(
     @Query() query: ListMenusQueryDto,
-  ): Promise<PagedResponseDto<MenuAdminTreeResponseDto>> {
+  ): Promise<PagedResponseDto<MenuResponseDto>> {
     return this.menusService.findAllForSuperAdmin(query);
   }
 
   @Get('my-menus')
-  @ApiOperation({ summary: 'List menus as a tree' })
+  @ApiOperation({ summary: 'List menus as a role-aware tree' })
   @ApiResponse({
     status: HttpStatus.OK,
     type: MenuTreeResponseDto,
