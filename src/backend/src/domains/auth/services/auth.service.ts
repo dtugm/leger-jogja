@@ -251,6 +251,6 @@ export class AuthService {
       .replace(/\/+$/, '');
     const searchParams = new URLSearchParams({ token });
 
-    return `${frontendUrl}?${searchParams.toString()}`;
+    return `${frontendUrl}/auth/login/new-password?${searchParams.toString()}`;
   }
 }
