@@ -39,12 +39,12 @@ services:
     environment:
       CITYDB_HOST: ${CONTAINER_DB_NAME}
       CITYDB_PORT: ${DB_PORT}
-      CITYDB_NAME:     ${DB_NAME}
+      CITYDB_NAME: ${DB_NAME}
       CITYDB_USERNAME: ${DB_USER}
       CITYDB_PASSWORD: ${DB_PASS}
     volumes:
       # - citydb_exports:/exports
-      - ./exports:/data
+      - ./backend/exports:/data
     networks:
       - ${NETWORK_NAME}
     # Override the default entrypoint — keep the container alive as a sidecar
@@ -90,7 +90,7 @@ services:
       DB_PORT: ${DB_PORT}
       REDIS_HOST: ${CONTAINER_REDIS_NAME}
       REDIS_PORT: ${REDIS_PORT}
-      CITYDB_TOOL_CONTAINER: db-tool
+      CITYDB_TOOL_CONTAINER: legger-db-tool
       CITYDB_TOOL_EXPORTS_PATH: /data
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: "1000"
