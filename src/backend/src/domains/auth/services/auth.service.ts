@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -19,6 +20,7 @@ import { RegisterDto } from '../dto/register.dto';
 import { PasswordResetToken } from '../entities/password-reset-token.entity';
 import { JwtPayload } from '../interfaces/jwt-payload.interface';
 import { LoginResponseDto } from '../dto/login-response.dto';
+import { User } from 'src/domains/users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -144,101 +146,99 @@ export class AuthService {
   }
 
   async requestPasswordReset(email: string) {
+    const genericReponse = 'If the email is registered, a password reset link will be sent.'
+
     const normalizedEmail = email.trim();
     const user = await this.usersService.findActiveUserByEmail(normalizedEmail);
 
     if (!user) {
       return {
-        message:
-          'If the email is registered, a password reset link will be sent.',
+        message: genericReponse
       };
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      await this.passwordResetTokensRepository.update(
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(
+      Date.now() +
+        this.configService.getOrThrow<number>(
+          'passwordReset.tokenExpiresInMinutes',
+        ) *
+          60 *
+          1000,
+    );
+
+    await this.dataSource.transaction(async (manager) => {
+      const tokenRepo = manager.getRepository(PasswordResetToken);
+
+      await tokenRepo.update(
         { userId: user.id, used: false },
-        { used: true },
-      );
-      const rawToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(
-        Date.now() +
-          this.configService.getOrThrow<number>(
-            'passwordReset.tokenExpiresInMinutes',
-          ) *
-            60 *
-            1000,
+        { used: true }
       );
 
-      const passwordResetToken = this.passwordResetTokensRepository.create({
-        token: rawToken,
-        userId: user.id,
-        expiresAt,
-        used: false,
-      });
+      await tokenRepo.save(
+        tokenRepo.create({
+          token: tokenHash,
+          userId: user.id,
+          expiresAt,
+          used: false,
+        })
+      );
+    });
 
-      await this.passwordResetTokensRepository.save(passwordResetToken);
+    try { 
       const resetUrl = this.buildResetUrl(rawToken);
       await this.mailService.sendPasswordResetEmail(
         user.email,
         user.fullname,
         resetUrl,
       );
-
-      await queryRunner.commitTransaction();
     } catch (error) {
-      await queryRunner.rollbackTransaction();
       this.logger.error(
         `Failed to send password reset email to ${email}`,
         error instanceof Error ? error.stack : String(error),
       );
-      throw new InternalServerErrorException('Failed to send an email');
-    } finally {
-      await queryRunner.release();
-    }
+    } 
 
-    return {
-      message:
-        'If the email is registered, a password reset link will be sent.',
-    };
+    return genericReponse;
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const passwordResetToken = await this.passwordResetTokensRepository.findOne(
-      {
-        where: {
-          token: token,
-          used: false,
-        },
-      },
-    );
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const hashPassword = await this.passwordService.hash(newPassword);
 
-    if (!passwordResetToken || passwordResetToken.expiresAt <= new Date()) {
-      throw new BadRequestException('Invalid or expired password reset token');
-    }
+    await this.dataSource.transaction(async (manager) => {
+      // update token to used and get userId in the same query to prevent race condition
+      const result = await manager
+        .createQueryBuilder()
+        .update(PasswordResetToken)
+        .set({ used: true })
+        .where(
+          'token = :token AND used = false AND expiresAt > :now',
+          { token: tokenHash, now: new Date() }
+        )
+        .returning('userId')
+        .execute();
+      
+        if (result.affected !== 1) {
+          throw new BadRequestException('Invalid or expired password reset token');
+        }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      await this.usersService.updatePassword(
-        passwordResetToken.userId,
-        newPassword,
-      );
-      await this.passwordResetTokensRepository.update(
-        { userId: passwordResetToken.userId, used: false },
-        { used: true },
-      );
-      await queryRunner.commitTransaction();
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      this.logger.error(err);
+        const userId = result.raw[0].userId;
+
+        // update user password
+        await manager.update(
+          User,
+          { id: userId },
+          { password: hashPassword }
+        );
+    }).catch((error) => {
+      this.logger.error(error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Failed to reset password');
-    } finally {
-      await queryRunner.release();
-    }
+    });
 
     return {
       message: 'Password has been reset successfully.',
@@ -251,6 +251,6 @@ export class AuthService {
       .replace(/\/+$/, '');
     const searchParams = new URLSearchParams({ token });
 
-    return `${frontendUrl}/reset-password?${searchParams.toString()}`;
+    return `${frontendUrl}?${searchParams.toString()}`;
   }
 }

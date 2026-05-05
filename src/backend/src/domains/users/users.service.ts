@@ -36,7 +36,7 @@ export class UsersService {
     actor: UserResponseDto,
     createUserDto: CreateUserDto,
   ): Promise<UserResponseDto> {
-    const role = this.resolveCreateRole(actor, createUserDto.role);
+    const role = this.resolveRole(actor, createUserDto.role);
     const response = await this.createUserRecord(
       {
         email: createUserDto.email,
@@ -48,17 +48,7 @@ export class UsersService {
       `Failed to create user ${createUserDto.username}`,
     );
 
-    try {
-      await this.cacheService.delByPattern('users:list:*');
-    } catch (e) {
-      this.logger.error(
-        `Failed to create user ${createUserDto.username}`,
-        e instanceof Error ? e.stack : String(e),
-      );
-      throw new InternalServerErrorException(
-        `Failed to create ${createUserDto.username}`,
-      );
-    }
+    await this.cacheService.safeDelByPattern('users:list:*');
 
     return response;
   }
@@ -75,94 +65,82 @@ export class UsersService {
       `Failed to register ${registerDto.username}`,
     );
 
-    try {
-      await this.cacheService.delByPattern('users:list:*');
-    } catch (err) {
-      this.logger.error(
-        `Failed to register ${registerDto.username}`,
-        err instanceof Error ? err.stack : String(err),
-      );
-      throw new InternalServerErrorException(
-        `Failed to register ${registerDto.username}`,
-      );
-    }
+    await this.cacheService.safeDelByPattern('users:list:*');
 
     return response;
   }
 
-  async findAll(
-    query: ListUsersQueryDto,
-  ): Promise<PagedResponseDto<UserResponseDto>> {
-    const key = await this.cacheService.generateKey(
-      'users',
-      'list',
-      this.cacheService.generateQueryHash(query),
-    );
-    const cached =
-      await this.cacheService.get<PagedResponseDto<UserResponseDto>>(key);
-    if (cached) return cached;
+    async findAll(
+      query: ListUsersQueryDto,
+    ): Promise<PagedResponseDto<UserResponseDto>> {
+      const key = await this.cacheService.generateKey(
+        'users',
+        'list',
+        this.cacheService.generateQueryHash(query),
+      );
+      const cached =
+        await this.cacheService.get<PagedResponseDto<UserResponseDto>>(key);
+      if (cached) return cached;
 
-    let users: User[] = [];
-    let total = 0;
-    try {
-      const builder = this.usersRepository.createQueryBuilder('user');
+      let users: User[] = [];
+      let total = 0;
+      try {
+        const builder = this.usersRepository.createQueryBuilder('user');
 
-      if (query.search) {
-        const search = `%${query.search.trim()}%`;
-        builder.andWhere(
-          new Brackets((qb) => {
-            qb.where('user.email ILIKE :search', { search })
-              .orWhere('user.username ILIKE :search', { search })
-              .orWhere('user.fullname ILIKE :search', { search });
-          }),
+        if (query.search) {
+          const search = `%${query.search.trim()}%`;
+          builder.andWhere(
+            new Brackets((qb) => {
+              qb.where('user.email ILIKE :search', { search })
+                .orWhere('user.username ILIKE :search', { search })
+                .orWhere('user.fullname ILIKE :search', { search });
+            }),
+          );
+        }
+
+        if (query.role) {
+          builder.andWhere('user.role = :role', { role: query.role });
+        }
+
+        [users, total] = await builder
+          .orderBy('user.created_at', 'DESC')
+          .skip((query.page - 1) * query.limit)
+          .take(query.limit)
+          .getManyAndCount();
+
+        const limit = query.limit || 20;
+        const totalPages = Math.ceil(total / limit) || 1;
+        const response = {
+          result: users.map((user) => this.toResponse(user)),
+          pagination: {
+            page: query.page,
+            limit,
+            total,
+            totalPages,
+          },
+          metadata: {
+            searchableFields: ['email', 'username', 'fullname'],
+            filterableFields: ['role'],
+          },
+        };
+
+        // set cache
+        await this.cacheService.set(key, response).catch((e) => {
+          this.logger.warn(
+            e instanceof Error ? e.stack : String(e),
+            `Failed to set cache for key ${key}`,
+          );
+        });
+
+        return response;
+      } catch (e) {
+        this.logger.error(
+          'Failed to fetch all user',
+          e instanceof Error ? e.stack : String(e),
         );
+        throw new InternalServerErrorException('Failed to fetch all user');
       }
-
-      if (query.role) {
-        builder.andWhere('user.role = :role', { role: query.role });
-      }
-
-      [users, total] = await builder
-        .orderBy('user.created_at', 'DESC')
-        .skip((query.page - 1) * query.limit)
-        .take(query.limit)
-        .getManyAndCount();
-    } catch (e) {
-      this.logger.error(
-        'Failed to fetch all user',
-        e instanceof Error ? e.stack : String(e),
-      );
-      throw new InternalServerErrorException('Failed to fetch all user');
     }
-
-    const limit = query.limit || 20;
-    const totalPages = Math.ceil(total / limit) || 1;
-    const response = {
-      result: users.map((user) => this.toResponse(user)),
-      pagination: {
-        page: query.page,
-        limit,
-        total,
-        totalPages,
-      },
-      metadata: {
-        searchableFields: ['email', 'username', 'fullname'],
-        filterableFields: ['role'],
-      },
-    };
-
-    try {
-      await this.cacheService.set(key, response);
-    } catch (e) {
-      this.logger.error(
-        'Failed to fetch all user',
-        e instanceof Error ? e.stack : String(e),
-      );
-      throw new InternalServerErrorException('Failed to fetch all user');
-    }
-
-    return response;
-  }
 
   async findOne(id: string): Promise<UserResponseDto> {
     const user = await this.findActiveUserById(id);
@@ -170,24 +148,28 @@ export class UsersService {
   }
 
   async findActiveUserById(id: string): Promise<User> {
-    let user: User | null;
     try {
-      user = await this.usersRepository.findOne({ where: { id } });
+      const user = await this.usersRepository.findOne({ where: { id } });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      return user;
     } catch (e) {
       this.logger.error(
         `Failed to fetch user with ID ${id}`,
         e instanceof Error ? e.stack : String(e),
       );
+
+      if (e instanceof NotFoundException) {
+        throw e;
+      }
+      
       throw new InternalServerErrorException(
         `Failed to fetch user with ID ${id}`,
       );
     }
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
   }
 
   async findActiveUserForAuth(identifier: string): Promise<User | null> {
@@ -286,7 +268,7 @@ export class UsersService {
     }
 
     if (updateUserDto.role && updateUserDto.role !== user.role) {
-      user.role = this.resolveUpdateRole(actor, updateUserDto.role);
+      user.role = this.resolveRole(actor, updateUserDto.role);
     }
 
     if (updateUserDto.password) {
@@ -295,7 +277,7 @@ export class UsersService {
 
     try {
       const updatedUser = await this.usersRepository.save(user);
-      await this.cacheService.delByPattern('users:list:*');
+      await this.cacheService.safeDelByPattern('users:list:*');
       return this.toResponse(updatedUser);
     } catch (e) {
       this.logger.error(
@@ -316,7 +298,7 @@ export class UsersService {
     const user = await this.findActiveUserById(id);
     try {
       await this.usersRepository.softDelete({ id: user.id });
-      await this.cacheService.delByPattern('users:list:*');
+      await this.cacheService.safeDelByPattern('users:list:*');
     } catch (e) {
       this.logger.error(
         `Failed to delete user with ID ${user.id}`,
@@ -365,20 +347,21 @@ export class UsersService {
     },
     failureMessage = 'Failed to create user',
   ): Promise<UserResponseDto> {
-    await this.ensureUniqueFields(input.email, input.username);
-
-    const user = this.usersRepository.create({
-      id: randomUUID(),
-      email: input.email.trim().toLowerCase(),
-      username: input.username.trim(),
-      fullname: input.fullname.trim(),
-      role: input.role,
-      password: await this.passwordService.hash(input.password as string),
-    });
-
-    let savedUser: User;
     try {
-      savedUser = await this.usersRepository.save(user);
+      await this.ensureUniqueFields(input.email, input.username);
+
+      const user = this.usersRepository.create({
+        id: randomUUID(),
+        email: input.email.trim().toLowerCase(),
+        username: input.username.trim(),
+        fullname: input.fullname.trim(),
+        role: input.role,
+        password: await this.passwordService.hash(input.password as string),
+      });
+      
+      const savedUser = await this.usersRepository.save(user);
+
+      return this.toResponse(savedUser);
     } catch (e) {
       this.logger.error(
         failureMessage,
@@ -386,7 +369,6 @@ export class UsersService {
       );
       throw new InternalServerErrorException(failureMessage);
     }
-    return this.toResponse(savedUser);
   }
 
   private async ensureUniqueFields(
@@ -445,46 +427,19 @@ export class UsersService {
     }
   }
 
-  private resolveCreateRole(
+  private resolveRole(
     actor: UserResponseDto,
     requestedRole: UserRole,
   ): UserRole {
-    if (requestedRole === UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException(
-        'super_admin can only be created manually through the database',
-      );
-    }
-
     if (actor.role === UserRole.SUPER_ADMIN) {
       return requestedRole;
     }
 
-    if (actor.role === UserRole.ADMIN) {
+    if (actor.role === UserRole.ADMIN && requestedRole != UserRole.SUPER_ADMIN) {
       return UserRole.USER;
     }
 
     throw new ForbiddenException('You do not have permission to create users');
-  }
-
-  private resolveUpdateRole(
-    actor: UserResponseDto,
-    requestedRole: UserRole,
-  ): UserRole {
-    if (requestedRole === UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException(
-        'super_admin can only be created manually through the database',
-      );
-    }
-
-    if (actor.role === UserRole.SUPER_ADMIN) {
-      return requestedRole;
-    }
-
-    if (actor.role === UserRole.ADMIN && requestedRole === UserRole.USER) {
-      return requestedRole;
-    }
-
-    throw new ForbiddenException('You do not have permission to update roles');
   }
 
   private async findVisibleUserOrThrow(

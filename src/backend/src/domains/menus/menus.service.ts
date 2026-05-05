@@ -77,7 +77,7 @@ export class MenusService {
       return this.toResponse(savedMenu);
     });
 
-    await this.cacheService.delByPattern('menus:*');
+    await this.cacheService.safeDelByPattern('menus:*');
 
     return response;
   }
@@ -90,7 +90,14 @@ export class MenusService {
     try {
       const menus = await this.findVisibleMenus(actor.role);
       const response = this.buildPublicTree(menus);
-      await this.cacheService.set(key, response);
+
+      // set cache
+      await this.cacheService.set(key, response).catch((e) => {
+        this.logger.error(
+          'Failed to cache menu tree',
+          e instanceof Error ? e.stack : String(e),
+        );
+      });
 
       return response;
     } catch (e) {
@@ -138,7 +145,14 @@ export class MenusService {
           totalPages: Math.ceil(total / limit) || 1,
         },
       };
-      await this.cacheService.set(key, response);
+
+      // set cache
+      await this.cacheService.set(key, response).catch((e) => {
+        this.logger.error(
+          'Failed to cache menu list',
+          e instanceof Error ? e.stack : String(e),
+        );
+      });
 
       return response;
     } catch (e) {
@@ -232,7 +246,7 @@ export class MenusService {
       return this.toResponse(savedMenu);
     });
 
-    await this.cacheService.delByPattern('menus:*');
+    await this.cacheService.safeDelByPattern('menus:*');
 
     return response;
   }
@@ -250,7 +264,7 @@ export class MenusService {
       await this.persistSiblingGroup(manager, remainingSiblings);
     });
 
-    await this.cacheService.delByPattern('menus:*');
+    await this.cacheService.safeDelByPattern('menus:*');
   }
 
   private async findVisibleMenus(role: UserRole): Promise<Menu[]> {

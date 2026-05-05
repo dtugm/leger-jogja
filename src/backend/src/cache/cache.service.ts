@@ -1,10 +1,12 @@
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from 'src/common/services.constant';
 @Injectable()
 export class CacheService {
+    private readonly logger = new Logger(CacheService.name);
+
     constructor(
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         @Inject(REDIS_CLIENT) private redis: Redis,
@@ -51,6 +53,14 @@ export class CacheService {
                 await this.redis.del(...keys);
             }
         } while (cursor !== '0');
+    }
+
+    async safeDelByPattern(pattern: string) {
+        try {
+            await this.delByPattern(pattern);
+        } catch (error) {
+            this.logger.warn(error, `Failed to delete cache with pattern ${pattern}`);
+        }
     }
 
 }
