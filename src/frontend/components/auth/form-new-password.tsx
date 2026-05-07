@@ -1,21 +1,39 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearchParams } from "next/dist/client/components/navigation";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { Controller, useForm } from "react-hook-form";
 
+import { useApiHandler } from "@/hooks/use-api-handler";
 import { type NewPasswordFormData, newPasswordSchema } from "@/lib/validations/auth";
+import { AuthApi } from "@/services/api/auth.api";
 
 import Button from "../button";
 import FormField from "../form-field";
 
 export default function FormNewPassword() {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<NewPasswordFormData>({
+  const router = useRouter();
+  const { execute, isLoading } = useApiHandler();
+
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  const { control, handleSubmit, formState: { errors } } = useForm<NewPasswordFormData>({
     resolver: zodResolver(newPasswordSchema),
+    mode: "onChange",
   });
 
   const onSubmit = async (data: NewPasswordFormData) => {
-    console.warn("new password", data);
+    if (!token) return;
+    
+    await execute({
+      request: () => AuthApi.resetPassword(token, data.password),
+      successMessage: "Password berhasil direset!",
+    });
+
+    router.push("/auth/login");
   };
 
   return (
@@ -26,25 +44,39 @@ export default function FormNewPassword() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <FormField 
-          label="New Password" 
-          type="password" 
-          placeholder=" @NewP4s5w0RD"
-          registration={register("password")} 
-          error={errors.password?.message} 
-          labelClassName="text-gray-700" 
-          inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+        <Controller
+          name="password"
+          control={control}
+          render={({ field }) => (
+            <FormField 
+              label="New Password" 
+              type="password" 
+              placeholder=" @NewP4s5w0RD"
+              value={field.value ?? ""} 
+              onChange={field.onChange}
+              error={errors.password?.message} 
+              labelClassName="text-gray-700" 
+              inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+            />
+          )}
         />
-        <FormField 
-          label="Confirm Password" 
-          type="password" 
-          placeholder=" @NewP4s5w0RD"
-          registration={register("confirmPassword")} 
-          error={errors.confirmPassword?.message} 
-          labelClassName="text-gray-700" 
-          inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+        <Controller
+          name="confirmPassword"
+          control={control}
+          render={({ field }) => (
+            <FormField 
+              label="Confirm Password" 
+              type="password" 
+              placeholder=" @NewP4s5w0RD"
+              value={field.value ?? ""} 
+              onChange={field.onChange}
+              error={errors.confirmPassword?.message} 
+              labelClassName="text-gray-700" 
+              inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
+            />
+          )}
         />
-        <Button variant="primary" size="md" text="Reset Password" fullW disabled={isSubmitting} />
+        <Button variant="primary" size="md" text="Reset Password" fullW disabled={isLoading} />
       </form>
 
       <p className="text-center text-sm text-muted-foreground">

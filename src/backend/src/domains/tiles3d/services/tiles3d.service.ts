@@ -9,6 +9,7 @@ import { Tiles3D } from '../entities/tiles3d.entity';
 import { DataSource, Repository } from 'typeorm';
 import { UpsertTiles3dDto } from '../dto/upsert-tiles3d.dto';
 import { Logger } from '@nestjs/common';
+import { getPrefix } from 'src/common/common';
 
 @Injectable()
 export class Tiles3dService {
@@ -32,9 +33,22 @@ export class Tiles3dService {
         await queryRunner.startTransaction();
         let fileUrl;
         try {
+            let prevTiles3d: Tiles3D | null = null;
+            if (id) {
+                prevTiles3d = await queryRunner.manager.findOne(Tiles3D, { where: { id } });
+                if (!prevTiles3d) {
+                    throw new NotFoundException('3dtiles data not found!')
+                }
+            }
+
             if (file?.path) {
                 fileUrl = await this.upload3DtilesFile(file.path);
                 upsertDto.url = fileUrl;
+            }
+
+            if (fileUrl) {
+                const geometry = await this.tileset3dService.loadTilesetFromS3(fileUrl);
+                upsertDto.geometry = () => `ST_GeogFromText('${geometry.polygon}')`;
             }
 
             const upsertData = {
@@ -43,20 +57,11 @@ export class Tiles3dService {
             }
             const tiles3d = await queryRunner.manager.save(Tiles3D, upsertData);
 
-            if (fileUrl) {
-                const geometry = await this.tileset3dService.loadTilesetFromS3(fileUrl);
-
-                await queryRunner.manager
-                    .createQueryBuilder()
-                    .update(Tiles3D)
-                    .set({
-                        geometry: () => `ST_GeogFromText(:polygon)`
-                    })
-                    .where('id = :id', { id: tiles3d.id })
-                    .setParameters({ polygon: geometry.polygon })
-                    .execute()
-            }
             await queryRunner.commitTransaction();
+            
+            if (fileUrl && prevTiles3d?.url) {
+                await this.storageService.deleteFolder(prevTiles3d?.url);
+            }
 
             return await this.findOne(tiles3d.id);
         } catch (error) {
@@ -67,14 +72,13 @@ export class Tiles3dService {
             if (fileUrl) {
                 this.logger.log(`Try to remove uploaded files from cloud storage`)
 
-                const url = new URL(fileUrl);
-                const paths = url.pathname.split('/').filter(Boolean);
-                paths.pop();
-                const prefix = paths.join('/');
+                const prefix = getPrefix(fileUrl);
 
                 await this.storageService.deleteFolder(prefix);
                 this.logger.log(`Successfully Removed uploaded files from cloud storage`)
             }
+
+            if (error instanceof NotFoundException) throw error;
 
             throw new InternalServerErrorException('Failed to upload file');
         } finally {
@@ -139,16 +143,29 @@ export class Tiles3dService {
     }
 
     async remove3dTiles(id: string) {
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
         try {
             const tiles3d = await this.findOne(id);
 
-            await this.tiles3dRepository.remove(tiles3d);
+            await queryRunner.manager.remove(tiles3d);
+
+            if (tiles3d.url) {
+                const prefix = getPrefix(tiles3d.url)
+                await this.storageService.deleteFolder(prefix);
+            }
 
             return { message: 'Successfully removed 3dtiles data' }
         } catch (error) {
             this.logger.error(error)
+            await queryRunner.rollbackTransaction();
+
             if (error instanceof NotFoundException) throw error;
             throw new InternalServerErrorException('Failed to remove 3dtiles data')
+        } finally {
+            await queryRunner.release();
         }
     }
 

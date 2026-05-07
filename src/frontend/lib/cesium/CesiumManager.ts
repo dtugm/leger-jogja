@@ -6,12 +6,10 @@ import {
   Color,
   ScreenSpaceEventHandler,
   ScreenSpaceEventType,
-  PostProcessStageLibrary,
   ImageryLayer,
   createWorldTerrainAsync,
   EllipsoidTerrainProvider,
   Ion,
-  Math as CesiumMath,
 } from "cesium";
 import { TilesetOptions, FlyToOptions } from "./types";
 
@@ -104,11 +102,11 @@ export class CesiumManager {
     try {
       const resource = options.assetId 
         ? await IonResource.fromAssetId(options.assetId)
-        : options.url;
+        : await options.url;
 
       if (!resource) throw new Error("No URL or AssetId provided for tileset");
 
-      const tileset = await Cesium3DTileset.fromUrl(resource, {
+      const tileset = await Cesium3DTileset.fromUrl(resource as any, {
         show: options.show ?? true,
       });
 

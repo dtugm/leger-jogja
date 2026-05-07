@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/dropdown-menu";
 
 export type SortDirection = "asc" | "desc" | null;
 export type SortIcon = "both" | "single";
@@ -87,7 +87,7 @@ export default function Table<T>({
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className={`flex items-center gap-1 text-xs font-medium transition-colors
-                            ${isFiltered ? "text-primary-600" : "text-muted-foreground hover:text-foreground"}`}>
+                            ${isFiltered ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                             {col.label}
                             <ChevronDown className="h-3.5 w-3.5 shrink-0" />
                           </button>
@@ -97,7 +97,7 @@ export default function Table<T>({
                             <DropdownMenuItem
                               key={opt}
                               onClick={() => handleFilter(col.key, filters[col.key] === opt ? null : opt)}
-                              className={filters[col.key] === opt ? "text-primary-600 font-medium" : ""}
+                              className={filters[col.key] === opt ? "text-foreground font-medium" : ""}
                             >
                               {opt}
                             </DropdownMenuItem>

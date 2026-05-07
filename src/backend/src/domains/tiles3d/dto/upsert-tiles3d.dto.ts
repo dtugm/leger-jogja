@@ -27,6 +27,10 @@ export class UpsertTiles3dDto {
     @IsOptional()
     url?: string;
 
+    @ApiHideProperty()
+    @IsOptional()
+    geometry?: any;
+
     @ApiProperty({ type: 'string', format: 'binary' })
     @IsOptional()
     file?: any;

@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
+import { LogActivity } from 'src/domains/log-activity/entities/log-activity.entity';
 
 export enum UserRole {
   SUPER_ADMIN = 'super_admin',
@@ -53,8 +54,11 @@ export class User {
     type: 'timestamp without time zone',
     nullable: true,
   })
-  deletedAt: Date | null;
+  deletedAt?: Date;
 
   @OneToMany(() => SourceFile, (sourceFile) => sourceFile.uploadedBy)
   sourceFiles: SourceFile[];
+
+  @OneToMany(() => LogActivity, (log) => log.user)
+  logActivities: LogActivity[];
 }

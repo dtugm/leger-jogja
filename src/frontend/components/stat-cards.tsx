@@ -1,4 +1,4 @@
-type StatColor = "blue" | "green" | "yellow" | "red";
+type StatColor = "blue" | "green" | "yellow" | "red" | "gray";
 
 interface StatCardProps {
   value: number | string;
@@ -11,6 +11,7 @@ const colorMap: Record<StatColor, string> = {
   green:  "text-[var(--color-success)]",
   yellow: "text-[var(--color-warning)]",
   red:    "text-[var(--color-danger)]",
+  gray:   "text-muted-foreground",
 };
 
 function StatCard({ value, label, color }: StatCardProps) {
@@ -23,19 +24,15 @@ function StatCard({ value, label, color }: StatCardProps) {
 }
 
 interface StatCardsProps {
-  totalAssets: number;
-  good: number;
-  fair: number;
-  poor: number;
+  stats: { value: number | string; label: string; color: StatColor }[];
 }
 
-export default function StatCards({ totalAssets, good, fair, poor }: StatCardsProps) {
+export default function StatCards({ stats }: StatCardsProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-      <StatCard value={totalAssets} label="Total Assets" color="blue" />
-      <StatCard value={good}        label="Good"         color="green" />
-      <StatCard value={fair}        label="Fair"         color="yellow" />
-      <StatCard value={poor}        label="Poor"         color="red" />
+      {stats.map((s) => (
+        <StatCard key={s.label} value={s.value} label={s.label} color={s.color} />
+      ))}
     </div>
   );
 }

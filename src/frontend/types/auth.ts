@@ -1,6 +1,6 @@
 export interface User {
   id: string;
-  fullName: string;
+  fullname: string;
   username: string;
   email: string;
 }
@@ -14,4 +14,13 @@ export interface IRegisterPayload {
   username: string;
   fullname: string;
   password: string;
+}
+
+export interface IForgotPasswordPayload {
+  email: string;
+}
+
+export interface IResetPasswordPayload {
+  token: string;
+  newPassword: string;
 }

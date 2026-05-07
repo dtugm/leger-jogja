@@ -32,6 +32,9 @@ export class SourceFile {
     @Column({ type: 'varchar' })
     filename: string;
 
+    @Column({ type: 'varchar', nullable: true })
+    url?: string;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

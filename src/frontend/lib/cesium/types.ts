@@ -1,7 +1,6 @@
-import { 
-  Cesium3DTileset, 
-  ImageryLayer, 
-  Viewer,
+import {
+  Cesium3DTileset,
+  ImageryLayer,
   Cartesian3,
   HeadingPitchRoll
 } from "cesium";
