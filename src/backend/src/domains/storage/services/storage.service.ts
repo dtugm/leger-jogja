@@ -14,6 +14,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AccessType } from '../enums/access-type.enum';
 import { ReadStream } from 'fs';
 import { Upload } from '@aws-sdk/lib-storage';
+import { UploadFileResult } from '../interfaces/upload-file-result.interface';
 
 export interface StorageFile {
     key: string;
@@ -127,7 +128,12 @@ export class StorageService {
         return presignedUrl;
     }
 
-    async uploadFile(key: string, file: Buffer | ReadStream, mimetype: string, contentLength?: number) {
+    async uploadFile(
+        key: string, 
+        file: Buffer | ReadStream, 
+        mimetype: string, 
+        contentLength?: number
+    ): Promise<UploadFileResult> {
         const upload = new Upload({
             client: this.client,
             params: {

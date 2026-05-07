@@ -9,6 +9,7 @@ import { UserResponseDto } from '../users/dto/user-response.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SkipLogActivity } from 'src/common/decorators/skip-log-activity.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -16,6 +17,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @SkipLogActivity()
   @ApiOperation({ summary: 'Register a new user account' })
   @ApiBody({ type: RegisterDto })
   register(@Body() registerDto: RegisterDto): Promise<UserResponseDto> {
@@ -29,7 +31,9 @@ export class AuthController {
   login(@Request() req: { user: UserResponseDto }): Promise<LoginResponseDto> {
     return this.authService.login(req.user);
   }
+  
   @Post('refresh')
+  @SkipLogActivity()
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiBody({ type: RefreshTokenDto })
   refresh(@Body() refreshTokenDto: RefreshTokenDto): Promise<LoginResponseDto> {

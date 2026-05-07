@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import path from "path";
 
 const logger = new Logger('CommonFunction');
 
@@ -16,4 +17,10 @@ export const getPrefix = (fileUrl: string, isFolder: boolean = true): string => 
         logger.error(error);
         return '';
     }
+}
+
+export const getExt = (filepath?: string): string => {
+    if (!filepath) return '';
+
+    return path.extname(filepath);
 }
