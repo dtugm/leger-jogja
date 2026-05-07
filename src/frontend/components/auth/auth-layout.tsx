@@ -2,7 +2,7 @@ import AuthIllustrationAnimated from "@/components/auth/auth-illustration";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen"
+    <div className="auth-layout min-h-screen"
         style={{
             background: `
             radial-gradient(ellipse at 15% 50%, #bfdbfe 0%, transparent 50%),

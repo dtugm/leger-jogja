@@ -63,7 +63,7 @@ async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     // Optionally redirect to login — can be customised later
     if (typeof window !== "undefined") {
       document.cookie = "token=; path=/; max-age=0";
-      window.location.href = "auth/login";
+      window.location.href = "/auth/login";
     }
   }
 

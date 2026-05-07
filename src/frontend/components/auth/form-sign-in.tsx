@@ -42,7 +42,7 @@ export default function FormSignIn() {
     });
 
     if (res.success && res.data) {
-      await setAuth(res.data.user, res.data.token);
+       await setAuth(res.data.user, res.data.accessToken);
       router.push("/catalog");
     }
   };

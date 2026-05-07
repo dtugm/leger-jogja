@@ -5,7 +5,7 @@ import { ApiPostData } from "./index";
 const mainPath = "/auth";
 export const AuthApi = {
   login: async (body: ILoginPayload) => {
-    return ApiPostData<{ token: string; user: User }>(
+    return ApiPostData<{ accessToken: string; refreshToken: string; expiresIn: string; tokenType: string; user: User }>(
       `${mainPath}/login`,
       body,
     );
