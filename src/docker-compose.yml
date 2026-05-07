@@ -1,0 +1,142 @@
+services:
+
+  db:
+    # image: 3dcitydb/3dcitydb-pg:latest-alpine
+    image: 3dcitydb/3dcitydb-pg:5.1-alpine
+    container_name: ${CONTAINER_DB_NAME}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      CITYDB_NAME: ${DB_NAME}
+      SRID: ${DB_SRID}
+      SRS_NAME: ${DB_SRS_NAME}
+    volumes:
+      - ./db_data:/var/lib/postgresql/18/docker
+    ports:
+      - "${DB_PORT_HOST}:${DB_PORT}"
+    networks:
+      - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  db-tool:
+    image: 3dcitydb/citydb-tool:latest
+    container_name: ${CONTAINER_DB_TOOL_NAME}
+    restart: unless-stopped # keep alive so docker exec always works
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      CITYDB_HOST: ${CONTAINER_DB_NAME}
+      CITYDB_PORT: ${DB_PORT}
+      CITYDB_NAME: ${DB_NAME}
+      CITYDB_USERNAME: ${DB_USER}
+      CITYDB_PASSWORD: ${DB_PASS}
+    volumes:
+      # - citydb_exports:/exports
+      - ./backend/exports:/data
+    networks:
+      - ${NETWORK_NAME}
+    # Override the default entrypoint — keep the container alive as a sidecar
+    entrypoint: [ "tail", "-f", "/dev/null" ]
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${CONTAINER_REDIS_NAME}
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    env_file:
+      - .env
+    volumes:
+      - ./redis_data:/data
+    ports:
+      - "${REDIS_PORT_HOST}:${REDIS_PORT}"
+    networks:
+      - ${NETWORK_NAME}
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: legger-be:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_BE_NAME}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      PORT: ${BE_PORT}
+      NODE_ENV: ${BE_NODE_ENV}
+      DB_HOST: ${CONTAINER_DB_NAME}
+      DB_PORT: ${DB_PORT}
+      REDIS_HOST: ${CONTAINER_REDIS_NAME}
+      REDIS_PORT: ${REDIS_PORT}
+      CITYDB_TOOL_CONTAINER: legger-db-tool
+      CITYDB_TOOL_EXPORTS_PATH: /data
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./backend/src:/app/src
+      # - .:/app
+      - ./backend/test:/app/test
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./backend/nest-cli.json:/app/nest-cli.json
+      - /app/node_modules
+      # Shared volume with legger-db-tool for CityGML/CityJSON file exchange
+      # - citydb_exports:/exports
+      - ./backend/exports:/data
+      # Docker socket — required for docker exec into legger-db-tool
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:${BE_PORT_HOST}:${BE_PORT}"
+    networks:
+      - ${NETWORK_NAME}
+    # command: sh -c "npm install && npm run start:dev"
+
+  frontend:
+    container_name: ${CONTAINER_FE_NAME}
+    image: legger-fe:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_TOKEN_ENCRYPTION_KEY=${NEXT_PUBLIC_TOKEN_ENCRYPTION_KEY:-default_secret_key_change_me}
+    ports:
+      - ${FE_PORT_HOST}:${FE_PORT}
+    environment:
+      - NODE_ENV=${FE_NODE_ENV}
+      - NEXT_PUBLIC_CESIUM_ION_TOKEN=${NEXT_PUBLIC_CESIUM_ION_TOKEN}
+    restart: always
+    networks:
+      - ${NETWORK_NAME}
+
+networks:
+  citydb_net:
+    driver: bridge
+
+# volumes:
+#   db_data:
+#   redis_data:
+#   citydb_exports:

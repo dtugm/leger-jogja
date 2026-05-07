@@ -15,7 +15,7 @@ import FormField from "../form-field";
 
 export default function FormSignIn() {
   const router = useRouter();
-  const { execute, isLoading } = useApiHandler();
+  const { execute } = useApiHandler();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const {
@@ -52,7 +52,7 @@ export default function FormSignIn() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FormField label="Email" type="email" registration={register("email")} error={errors.email?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
         <FormField label="Password" type="password" registration={register("password")} error={errors.password?.message} labelClassName="text-gray-700" inputClassName="bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"/>
-        <Button variant="primary" size="md" text="Sign In" fullW disabled={isSubmitting} />
+        <Button variant="primary" size="md" text="Sign In" fullW />
       </form>
 
       <div className="text-center">
