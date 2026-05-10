@@ -42,8 +42,9 @@ export default function FormSignIn() {
     });
 
     if (res.success && res.data) {
-       await setAuth(res.data.user, res.data.accessToken);
-      router.push("/catalog");
+      await setAuth(res.data.user, res.data.accessToken);
+      const role = res.data.user.role;
+      router.push(role === "user" ? "/catalog" : "/user-management");
     }
   };
 

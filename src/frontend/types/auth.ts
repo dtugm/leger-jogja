@@ -1,8 +1,11 @@
+import {UserRole} from "@/services/api/user.api";
+
 export interface User {
   id: string;
   fullname: string;
   username: string;
   email: string;
+  role: UserRole;
 }
 
 export interface ILoginPayload {

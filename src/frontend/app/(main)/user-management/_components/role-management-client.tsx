@@ -13,41 +13,64 @@ DialogHeader,
 DialogTitle,
 } from "@/components/ui/dialog";
 import UserTable, { type User } from "@/components/user-management/user-table";
+import { UserApi } from "@/services/api/user.api";
+import { useAuthStore } from "@/store/auth-store";
 
 import UserForm, { type UserFormData } from "../../../../components/user-management/user-form";
 
 export default function RoleManagementClient({ initialUsers }: { initialUsers: User[] }) {
+const currentUser = useAuthStore((state) => state.user);
+const isSuperAdmin = currentUser?.role === "super_admin";
 const [users, setUsers]               = useState<User[]>(initialUsers);
 const [query, setQuery]               = useState("");
 const [editTarget, setEditTarget]     = useState<User | null>(null);
 const [addOpen, setAddOpen]           = useState(false);
 const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
-const filtered    = users.filter(
-    (u) =>
-    u.name.toLowerCase().includes(query.toLowerCase())     ||
-    u.username.toLowerCase().includes(query.toLowerCase()) ||
-    u.id.toLowerCase().includes(query.toLowerCase())       ||
-    u.email.toLowerCase().includes(query.toLowerCase()),
+console.warn("users from BE:", users);
+const q = query.toLowerCase();
+const filtered = users.filter((u) =>
+  [u.fullname, u.username, u.id, u.email]
+    .some((field) => field?.toLowerCase().includes(q)),
 );
-const superadmins = filtered.filter((u) => u.role === "Superadmin").length;
-const admins      = filtered.filter((u) => u.role === "Admin").length;
-const guests      = filtered.filter((u) => u.role === "Guest").length;
+const superadmins = filtered.filter((u) => u.role === "super_admin").length;
+const admins      = filtered.filter((u) => u.role === "admin").length;
+const guests      = filtered.filter((u) => u.role === "user").length;
 
 async function handleEditSubmit(data: UserFormData) {
     if (!editTarget) return;
-    setUsers((prev) => prev.map((u) => (u.id === editTarget.id ? { ...u, ...data } : u)));
+    const res = await UserApi.update(editTarget.id, {
+        fullname: data.fullname,
+        username: data.username,
+        email:    data.email,
+        role:     data.role,
+        ...(data.password ? { password: data.password } : {}),
+    });
+
+    if (!res.success) {
+        if (res.statusCode === 409) throw { status: 409 };
+        return;
+    }
+
+    setUsers((prev) => prev.map((u) => (u.id === editTarget.id ? res.data : u)));
     setEditTarget(null);
 }
 
 async function handleAddSubmit(data: UserFormData) {
-  // tar ganti API call
-  const emailExists = users.some((u) => u.email === data.email);
-  if (emailExists) throw { status: 409 };
+  const res = await UserApi.create({
+    fullname: data.fullname,
+    username: data.username,
+    email:    data.email,
+    role:     data.role,
+    password: data.password!,
+  });
 
-  const newId = `USR-${String(users.length + 1).padStart(3, "0")}`;
-  const today = new Date().toISOString().split("T")[0];
-  setUsers((prev) => [{ ...data, id: newId, createdAt: today, updatedAt: today }, ...prev]);
+  if (!res.success) {
+    if (res.statusCode === 409) throw { status: 409 };
+    return;
+  }
+
+  setUsers((prev) => [res.data, ...prev]);
   setAddOpen(false);
 }
 
@@ -73,20 +96,21 @@ return (
         onChange={setQuery}
         className="flex-1"
         />
+        {isSuperAdmin && (
         <button
-        onClick={() => setAddOpen(true)}
-        className="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors whitespace-nowrap"
-        >
-        <UserPlus className="h-4 w-4" />
-        Add User
+            onClick={() => setAddOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors whitespace-nowrap">
+            <UserPlus className="h-4 w-4" />
+            Add User
         </button>
+        )}
     </div>
 
     <UserTable
         users={filtered}
         label={`User Accounts (${filtered.length} users)`}
-        onEdit={(user) => setEditTarget(user)}
-        onDelete={(user) => setDeleteTarget(user)}
+        onEdit={isSuperAdmin ? (user) => setEditTarget(user) : undefined}
+        onDelete={isSuperAdmin ? (user) => setDeleteTarget(user) : undefined}
     />
 
     <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
@@ -100,6 +124,7 @@ return (
             onCancel={() => setEditTarget(null)}
             onSubmit={handleEditSubmit}
             submitLabel="Save Changes"
+            isEdit
             />
         )}
         </DialogContent>
@@ -124,7 +149,7 @@ return (
         description={
         deleteTarget && (
             <>
-            <span className="font-medium text-foreground">{deleteTarget.name}</span>
+            <span className="font-medium text-foreground">{deleteTarget.fullname}</span>
             {" "}will be permanently removed from the system.
             </>
         )
