@@ -74,8 +74,10 @@ async function handleAddSubmit(data: UserFormData) {
   setAddOpen(false);
 }
 
-function handleDeleteConfirm() {
+async function handleDeleteConfirm() {
     if (!deleteTarget) return;
+    const res = await UserApi.delete(deleteTarget.id);
+    if (!res.success) return;
     setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
     setDeleteTarget(null);
 }
