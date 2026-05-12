@@ -36,7 +36,6 @@ export interface StorageFolder {
 export class StorageService {
   private readonly client: S3Client;
   private readonly bucketName: string;
-  private readonly publicDomain: string;
 
   constructor(private readonly configService: ConfigService) {
     const endpoint = this.configService.getOrThrow<string>('storage.endpoint');
@@ -48,9 +47,6 @@ export class StorageService {
     );
     const bucketName =
       this.configService.getOrThrow<string>('storage.bucketName');
-    const publicDomain = this.configService.getOrThrow<string>(
-      'storage.publicDomain',
-    );
 
     this.client = new S3Client({
       region: 'auto',
@@ -61,7 +57,6 @@ export class StorageService {
       },
     });
     this.bucketName = bucketName;
-    this.publicDomain = publicDomain;
   }
 
   async listFiles(
@@ -218,10 +213,7 @@ export class StorageService {
     publicDomain: string;
   } {
     const bucket = bucketName ?? this.bucketName;
-    const publicDomain =
-      bucketName && bucketName !== this.bucketName
-        ? `https://${bucketName}.geo-ai.id`
-        : this.publicDomain;
+    const publicDomain = `https://bucket.${bucket}.geo-ai.id`;
     return { bucket, publicDomain };
   }
 }
