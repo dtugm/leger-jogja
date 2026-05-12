@@ -106,8 +106,8 @@ export class StorageService {
         }),
       );
       return true;
-    } catch (error: any) {
-      if (error.name === 'NotFound') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'NotFound') {
         return false;
       }
       throw error;
@@ -218,9 +218,10 @@ export class StorageService {
     publicDomain: string;
   } {
     const bucket = bucketName ?? this.bucketName;
-    const publicDomain = bucketName
-      ? `https://${bucketName}.geo-ai.id`
-      : this.publicDomain;
+    const publicDomain =
+      bucketName && bucketName !== this.bucketName
+        ? `https://${bucketName}.geo-ai.id`
+        : this.publicDomain;
     return { bucket, publicDomain };
   }
 }
