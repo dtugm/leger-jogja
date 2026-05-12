@@ -4,14 +4,14 @@ import { useState } from "react";
 
 import FormField from "@/components/form-field";
 import SelectField from "@/components/select-field";
-import type { Role, UserStatus } from "@/components/user-management/user-table";
+import type { Role } from "@/components/user-management/user-table";
 
 export interface UserFormData {
-  name:     string;
+  fullname: string;
   username: string;
   email:    string;
   role:     Role;
-  status:   UserStatus;
+  password?: string; 
 }
 
 interface UserFormProps {
@@ -19,12 +19,13 @@ interface UserFormProps {
   onCancel: () => void;
   onSubmit: (data: UserFormData) => Promise<void>;
   submitLabel?: string;
+  isEdit?: boolean;
 }
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: "Admin",      label: "Admin" },
-  { value: "Superadmin", label: "Superadmin" },
-  { value: "Guest",      label: "Guest" },
+  { value: "admin",      label: "Admin" },
+  { value: "super_admin", label: "Superadmin" },
+  { value: "user",      label: "User" },
 ];
 
 export default function UserForm({
@@ -32,13 +33,14 @@ export default function UserForm({
   onCancel,
   onSubmit,
   submitLabel = "Save",
+  isEdit = false,
 }: UserFormProps) {
   const [form, setForm] = useState<UserFormData>({
-    name:     initialData?.name     ?? "",
+    fullname: initialData?.fullname ?? "",
     username: initialData?.username ?? "",
     email:    initialData?.email    ?? "",
-    role:     initialData?.role     ?? "Guest",
-    status:   initialData?.status   ?? "Active",
+    role:     initialData?.role     ?? "user",
+    password: "",
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof UserFormData, string>>>({});
@@ -50,12 +52,13 @@ export default function UserForm({
 
   const validate = (): Partial<Record<keyof UserFormData, string>> => {
     const e: Partial<Record<keyof UserFormData, string>> = {};
-    if (!form.name.trim())     e.name     = "Name is required";
+    if (!form.fullname.trim())     e.fullname     = "Full name is required";
     if (!form.username.trim()) e.username = "Username is required";
     else if (form.username.length < 8) e.username = "Username must be at least 8 characters";
     if (!form.email.trim())    e.email    = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
                                e.email    = "Enter a valid email address";
+    if (!isEdit && !form.password?.trim()) e.password = "Password is required";
     return e;
   };
 
@@ -80,9 +83,9 @@ export default function UserForm({
         <FormField
           label="Full Name"
           placeholder="e.g. Andi Prasetyo"
-          value={form.name}
-          onChange={(e) => set("name")(e.target.value)}
-          error={errors.name}
+          value={form.fullname}
+          onChange={(e) => set("fullname")(e.target.value)}
+          error={errors.fullname}
         />
         <FormField
           label="Username"
@@ -98,6 +101,16 @@ export default function UserForm({
           onChange={(e) => set("email")(e.target.value)}
           error={errors.email}
         />
+        {!isEdit && (
+          <FormField
+            label="Password"
+            type="password"
+            placeholder="Enter password"
+            value={form.password}
+            onChange={(e) => set("password")(e.target.value)}
+            error={errors.password}
+          />
+        )}
       </section>
 
       <section className="rounded-xl border border-border bg-card px-4 py-4 sm:px-6 sm:py-5 space-y-4">

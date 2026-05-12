@@ -22,6 +22,15 @@ export function proxy(request: NextRequest) {
   }
 
   const isAuthenticated = Boolean(request.cookies.get("token")?.value);
+    const role = request.cookies.get("role")?.value;
+
+    const ADMIN_ONLY_ROUTES = ["/user-management"];
+
+    function isAdminOnlyRoute(pathname: string) {
+      return ADMIN_ONLY_ROUTES.some(
+        (r) => pathname === r || pathname.startsWith(r + "/"),
+      );
+    }
 
   if (pathname === "/") {
     return NextResponse.redirect(
@@ -37,6 +46,12 @@ export function proxy(request: NextRequest) {
 
   if (isAuthenticated && isPublicRoute(pathname)) {
     return NextResponse.redirect(new URL(HOME_ROUTE, request.url));
+  }
+
+  if (isAuthenticated && isAdminOnlyRoute(pathname)) {
+    if (role !== "admin" && role !== "super_admin") {
+      return NextResponse.redirect(new URL(HOME_ROUTE, request.url));
+    }
   }
 
   return NextResponse.next();
