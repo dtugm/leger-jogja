@@ -3,6 +3,7 @@ import PageHeader from "@/components/page-header";
 
 import CatalogClient from "./_components/catalog-client";
 
+//ganti API call yakkk
 const ASSETS: Asset[] = [
   { id: "RD-001", name: "Jalan Tol Jakarta-Cikampek KM 23", type: "Road",   location: "West Java",       length: "72.5 km",  condition: "Good", lastInspection: "2026-01-15" },
   { id: "BR-001", name: "Jembatan Suramadu",                type: "Bridge", location: "East Java",       length: "5.4 km",   condition: "Good", lastInspection: "2026-01-20" },
