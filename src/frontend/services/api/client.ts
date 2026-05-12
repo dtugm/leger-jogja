@@ -62,7 +62,8 @@ async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     AuthTokenService.removeToken();
     // Optionally redirect to login — can be customised later
     if (typeof window !== "undefined") {
-      window.location.href = "/login";
+      document.cookie = "token=; path=/; max-age=0";
+      window.location.href = "/auth/login";
     }
   }
 
@@ -110,10 +111,19 @@ export async function apiRequest<T = unknown>(
       ...config?.headers,
     };
 
-    const token = await AuthTokenService.getToken();
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+    let token: string | null = null;
+
+      if (typeof window === "undefined") {
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        token = cookieStore.get("token")?.value ?? null;
+      } else {
+        token = await AuthTokenService.getToken();
+      }
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
 
     const url = buildUrl(path, config?.params);
 

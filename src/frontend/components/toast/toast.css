@@ -5,7 +5,7 @@
 /* --- Viewport: fixed position at bottom-right --- */
 .toast-viewport {
   position: fixed;
-  bottom: 24px;
+  top: 24px;
   right: 24px;
   z-index: 9999;
   display: flex;

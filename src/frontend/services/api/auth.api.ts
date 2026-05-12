@@ -5,7 +5,7 @@ import { ApiPostData } from "./index";
 const mainPath = "/auth";
 export const AuthApi = {
   login: async (body: ILoginPayload) => {
-    return ApiPostData<{ token: string; user: User }>(
+    return ApiPostData<{ accessToken: string; refreshToken: string; expiresIn: string; tokenType: string; user: User }>(
       `${mainPath}/login`,
       body,
     );
@@ -17,5 +17,13 @@ export const AuthApi = {
 
   refresh: async () => {
     return ApiPostData<null>(`${mainPath}/refresh`);
+  },
+
+  forgotPassword: async (email: string) => {
+    return ApiPostData<null>(`${mainPath}/forgot-password`, { email });
+  },
+
+  resetPassword: async (token: string, newPassword: string) => {
+    return ApiPostData<null>(`${mainPath}/reset-password`, { token, newPassword });
   },
 };

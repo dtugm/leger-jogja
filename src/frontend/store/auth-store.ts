@@ -21,7 +21,8 @@ export const useAuthStore = create<AuthState>()(
         await AuthTokenService.setToken(token);
 
         // 2. Save to cookie (for SSR support)
-        document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 2}; SameSite=Lax`;
+        document.cookie = `role=${user.role}; path=/; max-age=${60 * 60 * 24 * 2}; SameSite=Lax`;
 
         // 3. Update state
         set({ user, isAuthenticated: true });
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
 
         // 2. Remove from cookie
         document.cookie = "token=; path=/; max-age=0";
+        document.cookie = "role=; path=/; max-age=0";
 
         // 3. Reset state
         set({ user: null, isAuthenticated: false });
