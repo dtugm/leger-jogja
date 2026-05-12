@@ -27,7 +27,7 @@ export default function FormField({ label, type = "text", placeholder, error, re
             type={type}
             placeholder={placeholder ?? label}
         />
-        {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
+    { error && <p className="text-xs text-destructive">{error}</p> }
+    </div >
     );
 }
