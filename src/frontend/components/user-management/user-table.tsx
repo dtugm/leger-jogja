@@ -3,7 +3,7 @@
 import { Calendar, Pencil, Trash2 } from "lucide-react";
 
 import Table, { ColumnDef } from "@/components/table";
-import type { UserResponse as User,UserRole as Role } from "@/services/api/user.api";
+import type { UserResponse as User, UserRole as Role } from "@/services/api/user.api";
 
 export type { Role, User };
 
@@ -25,80 +25,80 @@ function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
 
-const roleBadge: Record<Role, string> = {
+const roleBadge: Partial<Record<Role, string>> = {
   super_admin: "bg-[var(--color-danger)]/10  text-[var(--color-danger)]",
-  admin:      "bg-[var(--color-warning)]/10 text-[var(--color-warning)]",
-  user:      "bg-[var(--color-info)]/10    text-[var(--color-info)]",
+  admin: "bg-[var(--color-warning)]/10 text-[var(--color-warning)]",
+  user: "bg-[var(--color-info)]/10    text-[var(--color-info)]",
 };
 
 function buildColumns(
-  onEdit?:   (user: User) => void,
+  onEdit?: (user: User) => void,
   onDelete?: (user: User) => void,
 ): ColumnDef<User>[] {
   const columns: ColumnDef<User>[] = [
-  {
-    key: "name",
-    label: "Name",
-    sortIcon: "both",
-    render: (row) => (
-      <span className="flex items-center gap-3">
+    {
+      key: "name",
+      label: "Name",
+      sortIcon: "both",
+      render: (row) => (
+        <span className="flex items-center gap-3">
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${getAvatarColor(row.fullname) ?? ""}`}
+          >
+            {getInitials(row.fullname) ?? ""}
+          </span>
+          <span className="flex flex-col">
+            <span className="font-medium text-foreground leading-tight">{row.fullname ?? "-"}</span>
+            <span className="text-xs text-muted-foreground">{row.email}</span>
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "username",
+      label: "Username",
+      sortIcon: "both",
+      render: (row) => (
+        <span className="text-sm text-foreground">{row.username}</span>
+      ),
+    },
+    {
+      key: "role",
+      label: "Role",
+      filterOptions: ["Admin", "Superadmin", "Guest"],
+      render: (row) => (
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${getAvatarColor(row.fullname) ?? ""}`}
+          className={`inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${roleBadge[row.role]}`}
         >
-          {getInitials(row.fullname) ?? ""}
+          {row.role}
         </span>
-        <span className="flex flex-col">
-          <span className="font-medium text-foreground leading-tight">{row.fullname ?? "-"}</span>
-          <span className="text-xs text-muted-foreground">{row.email}</span>
+      ),
+    },
+    {
+      key: "createdAt",
+      label: "Created At",
+      sortIcon: "both",
+      render: (row) => (
+        <span className="flex items-center gap-1.5 text-foreground">
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {row.createdAt}
         </span>
-      </span>
-    ),
-  },
-  {
-    key: "username",
-    label: "Username",
-    sortIcon: "both",
-    render: (row) => (
-      <span className="text-sm text-foreground">{row.username}</span>
-    ),
-  },
-  {
-    key: "role",
-    label: "Role",
-    filterOptions: ["Admin", "Superadmin", "Guest"],
-    render: (row) => (
-      <span
-        className={`inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${roleBadge[row.role]}`}
-      >
-        {row.role}
-      </span>
-    ),
-  },
-  {
-    key: "createdAt",
-    label: "Created At",
-    sortIcon: "both",
-    render: (row) => (
-      <span className="flex items-center gap-1.5 text-foreground">
-        <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        {row.createdAt}
-      </span>
-    ),
-  },
-  {
-    key: "updatedAt",
-    label: "Updated At",
-    sortIcon: "both",
-    render: (row) => (
-      <span className="flex items-center gap-1.5 text-foreground">
-        <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        {row.updatedAt}
-      </span>
-    ),
-  },
+      ),
+    },
+    {
+      key: "updatedAt",
+      label: "Updated At",
+      sortIcon: "both",
+      render: (row) => (
+        <span className="flex items-center gap-1.5 text-foreground">
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {row.updatedAt}
+        </span>
+      ),
+    },
   ];
-    
-    if (onEdit || onDelete) {
+
+  if (onEdit || onDelete) {
     columns.push({
       key: "actions",
       label: "Actions",
@@ -132,9 +132,9 @@ function buildColumns(
 }
 
 interface UserTableProps {
-  users:    User[];
-  label?:   string;
-  onEdit?:   (user: User) => void;
+  users: User[];
+  label?: string;
+  onEdit?: (user: User) => void;
   onDelete?: (user: User) => void;
 }
 
