@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 
 interface FormFieldProps {
     label: string;
+    name?: string;
     type?: InputHTMLAttributes<HTMLInputElement>["type"];
     placeholder?: string;
     error?: string;
@@ -15,12 +16,13 @@ interface FormFieldProps {
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export default function FormField({ label, type = "text", placeholder, error, registration, value, inputClassName, labelClassName, onChange }: FormFieldProps) {
+export default function FormField({ label, name, type = "text", placeholder, error, registration, value, inputClassName, labelClassName, onChange }: FormFieldProps) {
     return (
     <div className="space-y-1">
         <label className={`text-sm font-medium ${labelClassName ?? "text-foreground"}`}>{label}</label>
         <Input
             {...registration}
+            name={name}
             className={inputClassName}
             value={value}
             onChange={onChange}

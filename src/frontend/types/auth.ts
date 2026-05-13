@@ -1,11 +1,20 @@
-import {UserRole} from "@/services/api/user.api";
+export interface AvailableMenu {
+  name: string;
+  icon: object | null;
+  href: string;
+  index: number;
+  children: AvailableMenu[];
+}
 
 export interface User {
   id: string;
-  fullname: string;
-  username: string;
   email: string;
-  role: UserRole;
+  username: string;
+  fullname: string;
+  role: "super_admin" | "admin" | "user";
+  createdAt: string;
+  updatedAt: string;
+  availableMenus: AvailableMenu[];
 }
 
 export interface ILoginPayload {

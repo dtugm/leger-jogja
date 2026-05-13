@@ -1,11 +1,11 @@
-import type { ILoginPayload, IRegisterPayload, User } from "@/types/auth";
+import type { AvailableMenu, ILoginPayload, IRegisterPayload, User } from "@/types/auth";
 
 import { ApiPostData } from "./index";
 
 const mainPath = "/auth";
 export const AuthApi = {
   login: async (body: ILoginPayload) => {
-    return ApiPostData<{ accessToken: string; refreshToken: string; expiresIn: string; tokenType: string; user: User }>(
+    return ApiPostData<{ accessToken: string; refreshToken: string; expiresIn: string; tokenType: string; user: User; availableMenus: AvailableMenu[] }>(
       `${mainPath}/login`,
       body,
     );
