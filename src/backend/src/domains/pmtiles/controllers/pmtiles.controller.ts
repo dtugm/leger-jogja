@@ -117,6 +117,11 @@ const createPmtilesBodySchema = {
         type: 'string',
         example: 'dt-legger',
       },
+      prefix: {
+        type: 'string',
+        example: 'custom/pmtiles',
+        nullable: true,
+      },
       file: {
         type: 'string',
         format: 'binary',
@@ -140,6 +145,11 @@ const updatePmtilesBodySchema = {
       bucket_name: {
         type: 'string',
         example: 'dt-legger',
+      },
+      prefix: {
+        type: 'string',
+        example: 'custom/pmtiles',
+        nullable: true,
       },
       file: {
         type: 'string',

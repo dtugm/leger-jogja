@@ -47,7 +47,7 @@ export class PmtilesService {
       );
     }
 
-    const key = `${this.getPmtilesPrefix(dto.bucket_name)}/${uuidv4()}${ext}`;
+    const key = `${this.getPmtilesPrefix(dto.bucket_name, dto.prefix)}/${uuidv4()}${ext}`;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -108,7 +108,7 @@ export class PmtilesService {
     }
 
     const outputPath = path.join('/data', `converted-${Date.now()}.pmtiles`);
-    const key = `${this.getPmtilesPrefix(dto.bucket_name)}/${uuidv4()}.pmtiles`;
+    const key = `${this.getPmtilesPrefix(dto.bucket_name, dto.prefix)}/${uuidv4()}.pmtiles`;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -184,7 +184,7 @@ export class PmtilesService {
     }
 
     const outputPath = path.join('/data', `converted-${Date.now()}.pmtiles`);
-    const key = `${this.getPmtilesPrefix(dto.bucket_name)}/${uuidv4()}.pmtiles`;
+    const key = `${this.getPmtilesPrefix(dto.bucket_name, dto.prefix)}/${uuidv4()}.pmtiles`;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -306,6 +306,7 @@ export class PmtilesService {
     let uploadedFile: UploadFileResult | null = null;
 
     try {
+      const { prefix, ...updateDto } = dto;
       const existing = await queryRunner.manager.findOne(Pmtiles, {
         where: { id },
       });
@@ -313,7 +314,7 @@ export class PmtilesService {
         throw new NotFoundException('Pmtiles data not found');
       }
 
-      const bucketName = dto.bucket_name ?? existing.bucket_name;
+      const bucketName = updateDto.bucket_name ?? existing.bucket_name;
 
       if (file) {
         const ext = path.extname(file.originalname).toLowerCase();
@@ -323,7 +324,7 @@ export class PmtilesService {
           );
         }
 
-        const key = `${this.getPmtilesPrefix(bucketName)}/${uuidv4()}${ext}`;
+        const key = `${this.getPmtilesPrefix(bucketName, prefix)}/${uuidv4()}${ext}`;
         const fileBuffer = await fs.readFile(file.path);
         uploadedFile = await this.storageService.uploadFile(
           key,
@@ -334,7 +335,7 @@ export class PmtilesService {
         );
 
         await queryRunner.manager.update(Pmtiles, id, {
-          ...dto,
+          ...updateDto,
           filename: file.originalname,
           url: uploadedFile.url,
           file_size: file.size,
@@ -342,7 +343,7 @@ export class PmtilesService {
         });
       } else {
         await queryRunner.manager.update(Pmtiles, id, {
-          ...dto,
+          ...updateDto,
           updated_by: userId,
         });
       }
@@ -471,7 +472,30 @@ export class PmtilesService {
     return `'${value.replace(/'/g, `'\\''`)}'`;
   }
 
-  private getPmtilesPrefix(bucketName: string): string {
+  private getPmtilesPrefix(bucketName: string, prefix?: string): string {
+    const normalizedPrefix = this.normalizePmtilesPrefix(prefix);
+    if (normalizedPrefix) return normalizedPrefix;
     return bucketName === 'base-storage' ? 'leger-jogja/pmtiles' : 'pmtiles';
+  }
+
+  private normalizePmtilesPrefix(prefix?: string): string | null {
+    if (!prefix) return null;
+
+    const normalized = prefix
+      .trim()
+      .replace(/^\/+|\/+$/g, '')
+      .replace(/\/{2,}/g, '/');
+
+    if (!normalized) return null;
+
+    const hasUnsafeSegment = normalized
+      .split('/')
+      .some((segment) => segment === '.' || segment === '..');
+
+    if (hasUnsafeSegment || normalized.includes('\\')) {
+      throw new BadRequestException('Invalid PMTiles prefix');
+    }
+
+    return normalized;
   }
 }

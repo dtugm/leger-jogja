@@ -34,4 +34,14 @@ export class CreatePmtilesDto {
   @IsString()
   @IsNotEmpty()
   bucket_name: string;
+
+  @ApiPropertyOptional({ type: String, example: 'custom/pmtiles' })
+  @IsString()
+  @IsOptional()
+  @Transform(({ value }): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const prefix = value.trim();
+    return prefix || undefined;
+  })
+  prefix?: string;
 }
