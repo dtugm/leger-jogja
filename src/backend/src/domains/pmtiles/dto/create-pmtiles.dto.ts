@@ -1,17 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsNumber,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
-
-export enum BucketName {
-  DT_LEGGER = 'dt-legger',
-  BASE_STORAGE = 'base-storage',
-}
 
 export class CreatePmtilesDto {
   @ApiProperty()
@@ -41,8 +30,8 @@ export class CreatePmtilesDto {
   })
   project_usages?: string[];
 
-  @ApiProperty({ enum: BucketName })
-  @IsEnum(BucketName)
+  @ApiProperty({ type: String, example: 'dt-legger' })
+  @IsString()
   @IsNotEmpty()
-  bucket_name: BucketName;
+  bucket_name: string;
 }

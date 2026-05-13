@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Pmtiles } from '../entities/pmtiles.entity';
-import { CreatePmtilesDto, BucketName } from '../dto/create-pmtiles.dto';
+import { CreatePmtilesDto } from '../dto/create-pmtiles.dto';
 import { UpdatePmtilesDto } from '../dto/update-pmtiles.dto';
 import { StorageService } from 'src/domains/storage/services/storage.service';
 import { CacheService } from 'src/cache/cache.service';
@@ -47,11 +47,7 @@ export class PmtilesService {
       );
     }
 
-    const key = `${
-      dto.bucket_name === BucketName.BASE_STORAGE
-        ? 'leger-jogja/pmtiles'
-        : 'pmtiles'
-    }/${uuidv4()}${ext}`;
+    const key = `${this.getPmtilesPrefix(dto.bucket_name)}/${uuidv4()}${ext}`;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -112,17 +108,19 @@ export class PmtilesService {
     }
 
     const outputPath = path.join('/data', `converted-${Date.now()}.pmtiles`);
-    const key = `${
-      dto.bucket_name === BucketName.BASE_STORAGE
-        ? 'leger-jogja/pmtiles'
-        : 'pmtiles'
-    }/${uuidv4()}.pmtiles`;
+    const key = `${this.getPmtilesPrefix(dto.bucket_name)}/${uuidv4()}.pmtiles`;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     let uploadedFile: UploadFileResult | null = null;
     try {
-      await execAsync(`tile-join -f -o ${outputPath} ${file.path}`);
+      await this.ensureConverterCommandAvailable('tile-join');
+      await execAsync(
+        this.buildConverterCommand(
+          'tile-join',
+          `-f -o ${this.shellQuote(outputPath)} ${this.shellQuote(file.path)}`,
+        ),
+      );
       const fileBuffer = await fs.readFile(outputPath);
       const fileSize = (await fs.stat(outputPath)).size;
       uploadedFile = await this.storageService.uploadFile(
@@ -158,7 +156,8 @@ export class PmtilesService {
       await queryRunner.rollbackTransaction();
       if (
         error instanceof NotFoundException ||
-        error instanceof BadRequestException
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
       )
         throw error;
       throw new InternalServerErrorException(
@@ -185,18 +184,18 @@ export class PmtilesService {
     }
 
     const outputPath = path.join('/data', `converted-${Date.now()}.pmtiles`);
-    const key = `${
-      dto.bucket_name === BucketName.BASE_STORAGE
-        ? 'leger-jogja/pmtiles'
-        : 'pmtiles'
-    }/${uuidv4()}.pmtiles`;
+    const key = `${this.getPmtilesPrefix(dto.bucket_name)}/${uuidv4()}.pmtiles`;
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     let uploadedFile: UploadFileResult | null = null;
     try {
+      await this.ensureConverterCommandAvailable('tippecanoe');
       await execAsync(
-        `tippecanoe -o ${outputPath} -zg --drop-densest-as-needed --force ${file.path}`,
+        this.buildConverterCommand(
+          'tippecanoe',
+          `-o ${this.shellQuote(outputPath)} -zg --drop-densest-as-needed --force ${this.shellQuote(file.path)}`,
+        ),
       );
       const fileBuffer = await fs.readFile(outputPath);
       const fileSize = (await fs.stat(outputPath)).size;
@@ -235,7 +234,8 @@ export class PmtilesService {
       await queryRunner.rollbackTransaction();
       if (
         error instanceof NotFoundException ||
-        error instanceof BadRequestException
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
       )
         throw error;
       throw new InternalServerErrorException(
@@ -272,7 +272,11 @@ export class PmtilesService {
 
   async findOne(id: string): Promise<Pmtiles> {
     try {
-      const cacheKey = await this.cacheService.generateKey('pmtiles', 'item', id);
+      const cacheKey = await this.cacheService.generateKey(
+        'pmtiles',
+        'item',
+        id,
+      );
       const cached = await this.cacheService.get<Pmtiles>(cacheKey);
       if (cached) return cached;
 
@@ -284,6 +288,7 @@ export class PmtilesService {
       return pmtiles;
     } catch (error) {
       this.logger.error(error);
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Failed to fetch pmtiles data');
     }
   }
@@ -308,8 +313,7 @@ export class PmtilesService {
         throw new NotFoundException('Pmtiles data not found');
       }
 
-      const bucketName =
-        dto.bucket_name ?? (existing.bucket_name as BucketName);
+      const bucketName = dto.bucket_name ?? existing.bucket_name;
 
       if (file) {
         const ext = path.extname(file.originalname).toLowerCase();
@@ -319,11 +323,7 @@ export class PmtilesService {
           );
         }
 
-        const key = `${
-          bucketName === BucketName.BASE_STORAGE
-            ? 'leger-jogja/pmtiles'
-            : 'pmtiles'
-        }/${uuidv4()}${ext}`;
+        const key = `${this.getPmtilesPrefix(bucketName)}/${uuidv4()}${ext}`;
         const fileBuffer = await fs.readFile(file.path);
         uploadedFile = await this.storageService.uploadFile(
           key,
@@ -421,5 +421,57 @@ export class PmtilesService {
     } catch (error) {
       this.logger.error(error);
     }
+  }
+
+  private async ensureConverterCommandAvailable(
+    command: string,
+  ): Promise<void> {
+    try {
+      const converterContainer = this.getConverterContainer();
+      if (converterContainer) {
+        await execAsync(
+          `docker exec ${this.shellQuote(converterContainer)} sh -lc ${this.shellQuote(`command -v ${command}`)}`,
+        );
+        return;
+      }
+
+      await execAsync(`command -v ${command}`);
+    } catch (error) {
+      this.logger.error(
+        `Required PMTiles converter command is not installed: ${command}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw new InternalServerErrorException(
+        `Required PMTiles converter command is not installed: ${command}`,
+      );
+    }
+  }
+
+  private buildConverterCommand(command: string, args: string): string {
+    const converterContainer = this.getConverterContainer();
+    if (!converterContainer) return `${command} ${args}`;
+
+    return `docker exec ${this.shellQuote(converterContainer)} ${command} ${args}`;
+  }
+
+  private getConverterContainer(): string | null {
+    const converterContainer = process.env.PMTILES_CONVERTER_CONTAINER?.trim();
+    if (!converterContainer) return null;
+
+    if (!/^[a-zA-Z0-9_.-]+$/.test(converterContainer)) {
+      throw new InternalServerErrorException(
+        'Invalid PMTiles converter container name',
+      );
+    }
+
+    return converterContainer;
+  }
+
+  private shellQuote(value: string): string {
+    return `'${value.replace(/'/g, `'\\''`)}'`;
+  }
+
+  private getPmtilesPrefix(bucketName: string): string {
+    return bucketName === 'base-storage' ? 'leger-jogja/pmtiles' : 'pmtiles';
   }
 }

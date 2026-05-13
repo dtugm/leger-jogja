@@ -40,12 +40,12 @@ export class Pmtiles {
   @Column({ type: 'varchar' })
   bucket_name: string;
 
-  @Column({ type: 'varchar' })
-  updated_by: string;
+  @Column({ type: 'varchar', nullable: true })
+  updated_by: string | null;
 
-  @ManyToOne(() => User, { onDelete: 'NO ACTION' })
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
-  updater: User;
+  updater: User | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

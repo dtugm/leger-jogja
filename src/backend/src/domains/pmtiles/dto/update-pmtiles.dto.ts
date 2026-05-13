@@ -1,7 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { BucketName } from './create-pmtiles.dto';
 
 export class UpdatePmtilesDto {
   @ApiPropertyOptional()
@@ -31,8 +30,8 @@ export class UpdatePmtilesDto {
   })
   project_usages?: string[];
 
-  @ApiPropertyOptional({ enum: BucketName })
-  @IsEnum(BucketName)
+  @ApiPropertyOptional({ type: String, example: 'dt-legger' })
+  @IsString()
   @IsOptional()
-  bucket_name?: BucketName;
+  bucket_name?: string;
 }

@@ -115,7 +115,7 @@ const createPmtilesBodySchema = {
       },
       bucket_name: {
         type: 'string',
-        enum: ['dt-legger', 'base-storage'],
+        example: 'dt-legger',
       },
       file: {
         type: 'string',
@@ -139,7 +139,7 @@ const updatePmtilesBodySchema = {
       },
       bucket_name: {
         type: 'string',
-        enum: ['dt-legger', 'base-storage'],
+        example: 'dt-legger',
       },
       file: {
         type: 'string',
