@@ -15,7 +15,7 @@ export class AddPmtiles1778059826000 implements MigrationInterface {
                 "url" character varying,
                 "file_size" integer,
                 "bucket_name" character varying NOT NULL,
-                "updated_by" character varying NOT NULL,
+                "updated_by" character varying,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now(),
                 "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
                 CONSTRAINT "PK_pmtiles_id" PRIMARY KEY ("id")
@@ -25,6 +25,7 @@ export class AddPmtiles1778059826000 implements MigrationInterface {
             ALTER TABLE "public"."pmtiles"
             ADD CONSTRAINT "FK_pmtiles_updated_by"
             FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id")
+            ON DELETE SET NULL 
         `);
     await queryRunner.query(
       `CREATE INDEX "IDX_pmtiles_updated_by" ON "public"."pmtiles" ("updated_by")`,
