@@ -14,10 +14,10 @@ import { NavbarLogo } from "./NavbarLogo";
 import { NavbarMenu } from "./NavbarMenu";
 
 const DrawerFooter: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const user    = useAuthStore((s) => s.user);
-  const logout  = useAuthStore((s) => s.logout);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const { theme, setTheme } = useTheme();
-  const router   = useRouter();
+  const router = useRouter();
   const pathname = usePathname();
 
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
@@ -32,7 +32,7 @@ const DrawerFooter: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       "px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
       active
         ? "bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-300"
-        : "text-foreground/60 hover:text-primary-600"
+        : "text-foreground/60 hover:text-primary-600",
     );
 
   return (
@@ -86,7 +86,11 @@ const DrawerFooter: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label="Toggle theme"
         >
-          {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {theme === "dark" ? (
+            <Sun className="w-4 h-4" />
+          ) : (
+            <Moon className="w-4 h-4" />
+          )}
         </button>
       </div>
     </div>
@@ -99,7 +103,9 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
   return (
@@ -135,7 +141,6 @@ const Navbar: React.FC = () => {
             className="fixed top-0 right-0 h-full w-72 z-30 flex flex-col lg:hidden animate-slide-in-right
               bg-background dark:bg-[#0d1117] border-l border-border/60 shadow-2xl shadow-black/30"
           >
-
             <div className="flex items-center justify-between px-5 pt-5 pb-4 shrink-0">
               <NavbarLogo />
               <button

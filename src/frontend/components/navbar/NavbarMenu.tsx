@@ -1,7 +1,13 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Activity, BarChart2, FolderOpen, Layers, LayoutDashboard } from "lucide-react";
+import {
+  Activity,
+  BarChart2,
+  FolderOpen,
+  Layers,
+  LayoutDashboard,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
@@ -48,13 +54,13 @@ const NavItem: React.FC<NavItemProps> = ({
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
           isActive
             ? "bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-300 font-semibold"
-            : "text-foreground/55 hover:text-primary-600 dark:hover:text-primary-400"
+            : "text-foreground/55 hover:text-primary-600 dark:hover:text-primary-400",
         )}
       >
         <Icon
           className={cn(
             "w-4.25 h-4.25 shrink-0 transition-transform duration-200",
-            isActive ? "text-primary-500" : "group-hover:scale-110"
+            isActive ? "text-primary-500" : "group-hover:scale-110",
           )}
           aria-hidden
         />
@@ -77,13 +83,15 @@ const NavItem: React.FC<NavItemProps> = ({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1",
         isActive
           ? "bg-primary-50 text-primary-600 dark:bg-primary-500/15 dark:text-primary-200 font-semibold"
-          : "text-foreground/55 hover:text-primary-600 dark:hover:text-primary-400"
+          : "text-foreground/55 hover:text-primary-600 dark:hover:text-primary-400",
       )}
     >
       <Icon
         className={cn(
           "w-4 h-4 transition-transform duration-200",
-          isActive ? "text-primary-500 dark:text-primary-200" : "group-hover:scale-110"
+          isActive
+            ? "text-primary-500 dark:text-primary-200"
+            : "group-hover:scale-110",
         )}
         aria-hidden
       />
@@ -113,21 +121,29 @@ export const NavbarMenu: React.FC<{
         icon={ICON_MAP[menu.name] ?? LayoutDashboard}
         href={menu.href}
         variant={variant}
-        isActive={pathname === menu.href || pathname.startsWith(menu.href + "/")}
+        isActive={
+          pathname === menu.href || pathname.startsWith(menu.href + "/")
+        }
         onClick={onNavigate}
       />
     ));
 
   if (variant === "drawer") {
     return (
-      <nav aria-label="Main navigation" className={cn("flex flex-col gap-1", className)}>
+      <nav
+        aria-label="Main navigation"
+        className={cn("flex flex-col gap-1", className)}
+      >
         {items}
       </nav>
     );
   }
 
   return (
-    <nav aria-label="Main navigation" className={cn("flex items-center gap-0.5", className)}>
+    <nav
+      aria-label="Main navigation"
+      className={cn("flex items-center gap-0.5", className)}
+    >
       {items}
     </nav>
   );

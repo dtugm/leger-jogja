@@ -14,21 +14,22 @@ const dropdownLinkClass = (isActive: boolean) =>
     "block px-4 py-3 text-sm transition-colors",
     isActive
       ? "bg-primary-50 text-primary-600 font-semibold dark:bg-primary-500/10 dark:text-primary-300"
-      : "text-foreground hover:text-primary-600 dark:hover:bg-primary-500/10 dark:hover:text-primary-300"
+      : "text-foreground hover:text-primary-600 dark:hover:bg-primary-500/10 dark:hover:text-primary-300",
   );
 
 const UserMenu: React.FC = () => {
-  const router   = useRouter();
+  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const user   = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const ref = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -54,7 +55,7 @@ const UserMenu: React.FC = () => {
         className={cn(
           "w-10 h-10 rounded-full bg-primary-500 text-white text-xs font-semibold flex items-center justify-center hover:bg-primary-600 transition-colors",
           "ring-2 ring-offset-2 ring-offset-background transition-all",
-          open ? "ring-primary-500" : "ring-transparent"
+          open ? "ring-primary-500" : "ring-transparent",
         )}
         onClick={() => setOpen((v) => !v)}
         aria-label="User menu"
@@ -65,7 +66,6 @@ const UserMenu: React.FC = () => {
 
       {open && (
         <div className="absolute right-0 mt-2 w-60 rounded-xl border border-border bg-background shadow-lg z-50">
-
           <div className="px-4 py-3.5 border-b border-border">
             <p className="text-sm font-semibold text-foreground truncate">
               {user?.fullname ?? "..."}
@@ -86,7 +86,9 @@ const UserMenu: React.FC = () => {
             {isAdmin && (
               <Link
                 href="/user-management"
-                className={dropdownLinkClass(pathname.startsWith("/user-management"))}
+                className={dropdownLinkClass(
+                  pathname.startsWith("/user-management"),
+                )}
                 onClick={() => setOpen(false)}
               >
                 User Management
@@ -103,13 +105,18 @@ const UserMenu: React.FC = () => {
                   "flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-colors",
                   "bg-muted text-muted-foreground",
                   "hover:bg-primary-50 hover:text-primary-600",
-                  "dark:hover:bg-primary-500/15 dark:hover:text-primary-300"
+                  "dark:hover:bg-primary-500/15 dark:hover:text-primary-300",
                 )}
               >
-                {theme === "dark"
-                  ? <><Sun className="w-3.5 h-3.5" /> Light</>
-                  : <><Moon className="w-3.5 h-3.5" /> Dark</>
-                }
+                {theme === "dark" ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5" /> Light
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5" /> Dark
+                  </>
+                )}
               </button>
             </div>
           </div>
