@@ -6,6 +6,7 @@ import { Viewer } from "cesium";
 import React, { useEffect, useRef } from "react";
 
 import { useCesium } from "./CesiumProvider";
+import { useMainViewerStore } from "@/store/mainViewer.store";
 
 interface CesiumViewerProps {
   className?: string;
@@ -20,7 +21,7 @@ interface CesiumViewerProps {
 const CesiumViewer: React.FC<CesiumViewerProps> = ({
   className = "w-full h-full",
   onReady,
-  options
+  options,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { manager, isReady } = useCesium();
@@ -37,6 +38,17 @@ const CesiumViewer: React.FC<CesiumViewerProps> = ({
     if (isReady && manager && containerRef.current && !initialized.current) {
       const viewer = manager.initialize(containerRef.current, options);
       initialized.current = true;
+
+      // Apply initial terrain & basemap from store.
+      // The bridge's first effect fires before the viewer exists, so we
+      // must seed the viewer with the store's current state here.
+      const { activeDTM, activeBasemap } = useMainViewerStore.getState();
+      if (activeDTM) {
+        manager.setDTMTerrain(activeDTM);
+      }
+      if (activeBasemap) {
+        manager.setXYZBasemap(activeBasemap);
+      }
 
       if (onReady) {
         onReady(viewer);
@@ -55,7 +67,7 @@ const CesiumViewer: React.FC<CesiumViewerProps> = ({
     <div
       ref={containerRef}
       className={className}
-      style={{ width: '100%', height: '100%', position: 'absolute' }}
+      style={{ width: "100%", height: "100%", position: "absolute" }}
     />
   );
 };

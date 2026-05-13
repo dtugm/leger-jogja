@@ -7,7 +7,8 @@ import CesiumViewerDynamic from "@/components/cesium/CesiumViewerDynamic";
 import { Button } from "@/components/ui/button";
 
 const CesiumDemoContent = () => {
-  const { isReady, addTileset, removeTileset, flyToTileset, manager } = useCesium();
+  const { isReady, addTileset, removeTileset, flyToTileset, manager } =
+    useCesium();
   const [tilesetLoaded, setTilesetLoaded] = useState(false);
 
   const handleAddTileset = async () => {
@@ -16,7 +17,7 @@ const CesiumDemoContent = () => {
 
     await addTileset({
       id: "osm-buildings",
-      assetId: OSM_BUILDINGS_ID
+      assetId: OSM_BUILDINGS_ID,
     });
     setTilesetLoaded(true);
   };
@@ -26,7 +27,8 @@ const CesiumDemoContent = () => {
   };
 
   const handleToggleTerrain = (enable: boolean) => {
-    manager?.setTerrain(enable);
+    if (enable) manager?.enableTerrain();
+    else manager?.disableTerrain();
   };
 
   return (
@@ -51,10 +53,13 @@ const CesiumDemoContent = () => {
               <Button onClick={handleFlyTo} variant="outline">
                 Fly to Buildings
               </Button>
-              <Button onClick={() => {
-                removeTileset("osm-buildings");
-                setTilesetLoaded(false);
-              }} variant="destructive">
+              <Button
+                onClick={() => {
+                  removeTileset("osm-buildings");
+                  setTilesetLoaded(false);
+                }}
+                variant="destructive"
+              >
                 Remove Buildings
               </Button>
             </>
@@ -63,10 +68,18 @@ const CesiumDemoContent = () => {
           <div className="h-px bg-slate-300 dark:bg-slate-700 my-1" />
 
           <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={() => handleToggleTerrain(true)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleToggleTerrain(true)}
+            >
               Terrain On
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => handleToggleTerrain(false)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleToggleTerrain(false)}
+            >
               Terrain Off
             </Button>
           </div>

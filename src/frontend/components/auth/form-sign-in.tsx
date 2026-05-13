@@ -26,7 +26,7 @@ export default function FormSignIn() {
     formState: { errors, isSubmitting},
   } = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
-    mode: "onChange",
+    mode: "onSubmit",
   });
 
   const formRef = useRef<HTMLFormElement>(null);
