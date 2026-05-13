@@ -37,7 +37,7 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
 }
 
 function PageBtn({
-  children, onClick, disabled, active, ...rest
+  children, onClick, disabled, active,
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
   return (
     <button
