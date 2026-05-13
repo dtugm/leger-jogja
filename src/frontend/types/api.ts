@@ -6,11 +6,19 @@
  * Standard API success response envelope.
  * All backend responses should conform to this shape.
  */
+export interface ApiPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
   message: string;
   statusCode: number;
+  pagination?: ApiPagination;
 }
 
 /**
