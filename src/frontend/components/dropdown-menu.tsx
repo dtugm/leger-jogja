@@ -97,16 +97,15 @@ export function DropdownMenuContent({ children }: ContentProps) {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [setOpen, triggerRef]);
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, []);
+  }, [setOpen]);
 
   if (!open || typeof window === "undefined") return null;
 
@@ -155,5 +154,5 @@ export function DropdownMenuItem({ children, onClick, className = "" }: ItemProp
 }
 
 export function DropdownMenuSeparator() {
-  return <div className="-mx-0 my-1 h-px bg-border" />;
+  return <div className="mx-0 my-1 h-px bg-border" />;
 }

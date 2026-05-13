@@ -42,9 +42,19 @@ export default function FormSignIn() {
     });
 
     if (res.success && res.data) {
-      await setAuth(res.data.user, res.data.accessToken);
+      const userWithMenus = {
+        ...res.data.user,
+        availableMenus: res.data.availableMenus ?? [],
+      };
+      await setAuth(userWithMenus, res.data.accessToken);
+
       const role = res.data.user.role;
-      router.push(role === "user" ? "/catalog" : "/user-management");
+      const redirectMap: Record<string, string> = {
+        user: "/catalog",
+        admin: "/user-management",
+        super_admin: "/user-management",
+      };
+      router.push(redirectMap[role] ?? "/catalog");
     }
   };
 
@@ -52,8 +62,8 @@ export default function FormSignIn() {
     const timer = setTimeout(() => {
       const form = formRef.current;
       if (!form) return;
-      const email = (form.querySelector('input[type="email"]') as HTMLInputElement)?.value;
-      const password = (form.querySelector('input[type="password"]') as HTMLInputElement)?.value;
+      const email = (form.querySelector('input[name="email"]') as HTMLInputElement)?.value;
+      const password = (form.querySelector('input[name="password"]') as HTMLInputElement)?.value;
       if (email) setValue("email", email);
       if (password) setValue("password", password);
     }, 500);
@@ -72,7 +82,8 @@ export default function FormSignIn() {
           name="email"
           control={control}
           render={({ field }) => (
-            <FormField 
+            <FormField
+              name="email"
               label="Email or Username" 
               type="text"
               placeholder="e.g. yourname@email.com or username"
@@ -89,6 +100,7 @@ export default function FormSignIn() {
           control={control}
           render={({ field }) => (       
           <FormField 
+            name="password"
             label="Password"
             type="password"
             placeholder="e.g. @Y0UrP4s5w0rD"
