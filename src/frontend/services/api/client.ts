@@ -86,6 +86,7 @@ async function handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     data: body.data ?? (null as unknown as T),
     message: body.message ?? (response.ok ? "Success" : "Error"),
     statusCode: body.statusCode ?? response.status,
+    pagination: body.pagination, // ← tambah ini
   };
 }
 
