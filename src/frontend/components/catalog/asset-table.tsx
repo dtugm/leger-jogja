@@ -15,6 +15,8 @@ export interface Asset {
   length: string;
   condition: Condition;
   lastInspection: string;
+  /** Geographic position [longitude, latitude] */
+  coordinates?: [number, number];
 }
 
 const conditionDot: Record<Condition, string> = {

@@ -1,12 +1,28 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 
 import AssetTable, { type Asset } from "@/components/catalog/asset-table";
 import SearchInput from "@/components/search";
 import StatCards from "@/components/stat-cards";
+
+// ─── Dynamic Import ───────────────────────────────────────────────────────────
+// MapLibre uses browser-only APIs (WebGL, window, etc.), so it must be
+// loaded client-side only. `ssr: false` prevents server-render errors.
+const CatalogMap = dynamic(
+  () => import("./catalog-map"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[400px] rounded-xl border border-border bg-muted animate-pulse mb-6" />
+    ),
+  }
+);
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CatalogClient({ assets }: { assets: Asset[] }) {
   const [query, setQuery] = useState("");
@@ -23,13 +39,22 @@ export default function CatalogClient({ assets }: { assets: Asset[] }) {
 
   return (
     <>
+      {/* ── Asset Map ── always shows all assets regardless of search filter */}
+
+
+      {/* ── Stat Cards ── */}
       <StatCards stats={[
         { value: filtered.length, label: "Total Assets", color: "green" },
-        { value: good,            label: "Good",         color: "blue" },
-        { value: fair,            label: "Fair",         color: "yellow" },
-        { value: poor,            label: "Poor",         color: "red" },
+        { value: good, label: "Good", color: "blue" },
+        { value: fair, label: "Fair", color: "yellow" },
+        { value: poor, label: "Poor", color: "red" },
       ]} />
 
+      <div className="my-6">
+        <CatalogMap assets={assets} height="420px" />
+      </div>
+
+      {/* ── Toolbar ── */}
       <div className="mb-5 flex flex-col sm:flex-row items-strech sm:items-center gap-2 sm:gap-3">
         <SearchInput
           placeholder="Search assets..."
@@ -46,6 +71,7 @@ export default function CatalogClient({ assets }: { assets: Asset[] }) {
         </Link>
       </div>
 
+      {/* ── Asset Table ── */}
       <AssetTable
         assets={filtered}
         label={`Infrastructure Assets (${filtered.length} items)`}
