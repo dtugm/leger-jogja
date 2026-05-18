@@ -12,6 +12,7 @@ import { randomUUID } from 'crypto';
 import { PasswordService } from '../../common/security/password.service';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { MenusService } from '../menus/menus.service';
+import { Pmtiles } from '../pmtiles/entities/pmtiles.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { CurrentUserResponseDto } from './dto/current-user-response.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
@@ -27,6 +28,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(Pmtiles)
+    private readonly pmtilesRepository: Repository<Pmtiles>,
     private readonly passwordService: PasswordService,
     private readonly menusService: MenusService,
     private readonly cacheService: CacheService,
@@ -70,77 +73,77 @@ export class UsersService {
     return response;
   }
 
-    async findAll(
-      query: ListUsersQueryDto,
-    ): Promise<PagedResponseDto<UserResponseDto>> {
-      const key = await this.cacheService.generateKey(
-        'users',
-        'list',
-        this.cacheService.generateQueryHash(query),
-      );
-      const cached =
-        await this.cacheService.get<PagedResponseDto<UserResponseDto>>(key);
-      if (cached) return cached;
+  async findAll(
+    query: ListUsersQueryDto,
+  ): Promise<PagedResponseDto<UserResponseDto>> {
+    const key = await this.cacheService.generateKey(
+      'users',
+      'list',
+      this.cacheService.generateQueryHash(query),
+    );
+    const cached =
+      await this.cacheService.get<PagedResponseDto<UserResponseDto>>(key);
+    if (cached) return cached;
 
-      let users: User[] = [];
-      let total = 0;
-      try {
-        const builder = this.usersRepository.createQueryBuilder('user');
+    let users: User[] = [];
+    let total = 0;
+    try {
+      const builder = this.usersRepository.createQueryBuilder('user');
 
-        if (query.search) {
-          const search = `%${query.search.trim()}%`;
-          builder.andWhere(
-            new Brackets((qb) => {
-              qb.where('user.email ILIKE :search', { search })
-                .orWhere('user.username ILIKE :search', { search })
-                .orWhere('user.fullname ILIKE :search', { search });
-            }),
-          );
-        }
-
-        if (query.role) {
-          builder.andWhere('user.role = :role', { role: query.role });
-        }
-
-        [users, total] = await builder
-          .orderBy('user.created_at', 'DESC')
-          .skip((query.page - 1) * query.limit)
-          .take(query.limit)
-          .getManyAndCount();
-
-        const limit = query.limit || 20;
-        const totalPages = Math.ceil(total / limit) || 1;
-        const response = {
-          result: users.map((user) => this.toResponse(user)),
-          pagination: {
-            page: query.page,
-            limit,
-            total,
-            totalPages,
-          },
-          metadata: {
-            searchableFields: ['email', 'username', 'fullname'],
-            filterableFields: ['role'],
-          },
-        };
-
-        // set cache
-        await this.cacheService.set(key, response).catch((e) => {
-          this.logger.warn(
-            e instanceof Error ? e.stack : String(e),
-            `Failed to set cache for key ${key}`,
-          );
-        });
-
-        return response;
-      } catch (e) {
-        this.logger.error(
-          'Failed to fetch all user',
-          e instanceof Error ? e.stack : String(e),
+      if (query.search) {
+        const search = `%${query.search.trim()}%`;
+        builder.andWhere(
+          new Brackets((qb) => {
+            qb.where('user.email ILIKE :search', { search })
+              .orWhere('user.username ILIKE :search', { search })
+              .orWhere('user.fullname ILIKE :search', { search });
+          }),
         );
-        throw new InternalServerErrorException('Failed to fetch all user');
       }
+
+      if (query.role) {
+        builder.andWhere('user.role = :role', { role: query.role });
+      }
+
+      [users, total] = await builder
+        .orderBy('user.created_at', 'DESC')
+        .skip((query.page - 1) * query.limit)
+        .take(query.limit)
+        .getManyAndCount();
+
+      const limit = query.limit || 20;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const response = {
+        result: users.map((user) => this.toResponse(user)),
+        pagination: {
+          page: query.page,
+          limit,
+          total,
+          totalPages,
+        },
+        metadata: {
+          searchableFields: ['email', 'username', 'fullname'],
+          filterableFields: ['role'],
+        },
+      };
+
+      // set cache
+      await this.cacheService.set(key, response).catch((e) => {
+        this.logger.warn(
+          e instanceof Error ? e.stack : String(e),
+          `Failed to set cache for key ${key}`,
+        );
+      });
+
+      return response;
+    } catch (e) {
+      this.logger.error(
+        'Failed to fetch all user',
+        e instanceof Error ? e.stack : String(e),
+      );
+      throw new InternalServerErrorException('Failed to fetch all user');
     }
+  }
 
   async findOne(id: string): Promise<UserResponseDto> {
     const user = await this.findActiveUserById(id);
@@ -165,7 +168,7 @@ export class UsersService {
       if (e instanceof NotFoundException) {
         throw e;
       }
-      
+
       throw new InternalServerErrorException(
         `Failed to fetch user with ID ${id}`,
       );
@@ -297,6 +300,10 @@ export class UsersService {
 
     const user = await this.findActiveUserById(id);
     try {
+      await this.pmtilesRepository.update(
+        { updated_by: user.id },
+        { updated_by: null },
+      );
       await this.usersRepository.softDelete({ id: user.id });
       await this.cacheService.safeDelByPattern('users:list:*');
     } catch (e) {
@@ -358,7 +365,7 @@ export class UsersService {
         role: input.role,
         password: await this.passwordService.hash(input.password as string),
       });
-      
+
       const savedUser = await this.usersRepository.save(user);
 
       return this.toResponse(savedUser);
@@ -435,7 +442,10 @@ export class UsersService {
       return requestedRole;
     }
 
-    if (actor.role === UserRole.ADMIN && requestedRole != UserRole.SUPER_ADMIN) {
+    if (
+      actor.role === UserRole.ADMIN &&
+      requestedRole != UserRole.SUPER_ADMIN
+    ) {
       return UserRole.USER;
     }
 

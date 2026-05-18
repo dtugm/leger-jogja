@@ -18,6 +18,7 @@ import { ToolModule } from './tool/tool.module';
 import { StorageModule } from './domains/storage/storage.module';
 import { Tiles3dModule } from './domains/tiles3d/tiles3d.module';
 import { LogActivityModule } from './domains/log-activity/log-activity.module';
+import { PmtilesModule } from './domains/pmtiles/pmtiles.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { LogActivityModule } from './domains/log-activity/log-activity.module';
     StorageModule,
     Tiles3dModule,
     LogActivityModule,
+    PmtilesModule,
   ],
   controllers: [AppController],
   providers: [

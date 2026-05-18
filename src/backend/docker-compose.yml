@@ -81,6 +81,16 @@ services:
       timeout: 5s
       retries: 5
 
+  legger-tippecanoe:
+    image: metacollin/tippecanoe:latest
+    container_name: legger-tippecanoe
+    restart: unless-stopped
+    volumes:
+      - ./exports:/data
+    networks:
+      - citydb_net
+    entrypoint: [ "tail", "-f", "/dev/null" ]
+
   legger-app:
     build:
       context: .
@@ -107,6 +117,9 @@ services:
       # citydb-tool — MUST match container_name above
       CITYDB_TOOL_CONTAINER: legger-db-tool
       CITYDB_TOOL_EXPORTS_PATH: /data
+      
+      # tippecanoe - pmtiles converter
+      PMTILES_CONVERTER_CONTAINER: legger-tippecanoe
 
       # App
       PORT: ${PORT}
