@@ -72,7 +72,7 @@ services:
   backend:
     image: legger-be:latest
     build:
-      context: ./backend
+      context: ./src/backend
       dockerfile: Dockerfile
     container_name: ${CONTAINER_BE_NAME}
     restart: unless-stopped
@@ -96,16 +96,16 @@ services:
       CHOKIDAR_INTERVAL: "1000"
       WATCHPACK_POLLING: "true"
     volumes:
-      - ./backend/src:/app/src
+      - ./src/backend/src:/app/src
       # - .:/app
-      - ./backend/test:/app/test
-      - ./backend/tsconfig.json:/app/tsconfig.json
-      - ./backend/tsconfig.build.json:/app/tsconfig.build.json
-      - ./backend/nest-cli.json:/app/nest-cli.json
+      - ./src/backend/test:/app/test
+      - ./src/backend/tsconfig.json:/app/tsconfig.json
+      - ./src/backend/tsconfig.build.json:/app/tsconfig.build.json
+      - ./src/backend/nest-cli.json:/app/nest-cli.json
       - /app/node_modules
       # Shared volume with legger-db-tool for CityGML/CityJSON file exchange
       # - citydb_exports:/exports
-      - ./backend/exports:/data
+      - ./src/backend/exports:/data
       # Docker socket — required for docker exec into legger-db-tool
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
@@ -118,7 +118,7 @@ services:
     container_name: ${CONTAINER_FE_NAME}
     image: legger-fe:latest
     build:
-      context: ./frontend
+      context: ./src/frontend
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
@@ -133,7 +133,7 @@ services:
       - ${NETWORK_NAME}
 
 networks:
-  citydb_net:
+  leger-jogja-net:
     driver: bridge
 
 # volumes:
