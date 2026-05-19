@@ -1,12 +1,6 @@
 import { ApiDeleteData, ApiGetData, ApiPatchData, ApiPostData } from "./index";
 
-export type UserRole =
-  | "super_admin"
-  | "admin"
-  | "user"
-  | "Admin"
-  | "Superadmin"
-  | "Guest";
+export type UserRole = "super_admin" | "admin" | "user";
 
 export interface UserResponse {
   id: string;
